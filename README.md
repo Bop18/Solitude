@@ -113,7 +113,9 @@ Blizzard's official API. It works today for Classic Era characters. Whether it w
    - `BLIZZARD_CLIENT_ID` = your client ID
    - `BLIZZARD_CLIENT_SECRET` = your client secret
    - `BLIZZARD_REGION` = `eu` (or `us`)
-   - `BLIZZARD_NAMESPACE` = `profile-classic1x` for Classic Era. When WoW: Forever launches, change this to its namespace once Blizzard documents it.
+   - `BLIZZARD_NAMESPACE`: **leave this out.** The site tries the likely WoW: Forever / Classic namespaces and remembers which one works. Only set it to force one (e.g. `profile-classic1x` for Classic Era).
+
+   Once this is set up, everyone's characters **sync themselves** when they open the site (if they're more than 3 hours old and have a realm filled in). The Sync button still works for an instant refresh.
    Then **Redeploy**.
 4. Make sure the character's **Realm** is filled in (Edit character), then press **⟳ Battle.net**.
 

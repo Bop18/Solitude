@@ -5,9 +5,9 @@
 // Needs these environment variables (Vercel → Settings → Environment Variables):
 //   BLIZZARD_CLIENT_ID, BLIZZARD_CLIENT_SECRET  (from https://develop.battle.net/access/clients)
 //   BLIZZARD_REGION      eu | us | kr | tw              (default: eu)
-//   BLIZZARD_NAMESPACE   which game version's profiles   (default: profile-classic1x = Classic Era)
-//                        e.g. profile-classic for progression Classic. WoW: Forever's is not known yet;
-//                        when Blizzard announces it, change this one setting.
+//   BLIZZARD_NAMESPACE   optional. Which game version's profiles to look in. Leave it empty and the
+//                        site tries the likely ones (see NAMESPACE_GUESSES) and remembers which worked.
+//                        Set it if you want to force one, e.g. profile-classic1x (Classic Era).
 
 import { createClient } from '@supabase/supabase-js';
 import { applySync, realmSlug, BLIZZARD_SLOTS, QUALITY_BY_BLIZZARD } from '@/lib/gearSync';
@@ -15,6 +15,12 @@ import { applySync, realmSlug, BLIZZARD_SLOTS, QUALITY_BY_BLIZZARD } from '@/lib
 export const dynamic = 'force-dynamic';
 
 const json = (body, status = 200) => Response.json(body, { status });
+
+// Same Battle.net API for every WoW version; the namespace picks the game.
+// WoW: Forever's isn't announced yet, so try the likely names in order.
+// (Retail, plain "profile", is left out on purpose so a same-named retail character can't be picked up.)
+const NAMESPACE_GUESSES = ['profile-forever', 'profile-classic-forever', 'profile-classic1x', 'profile-classic', 'profile-classic-ann'];
+const workingNamespace = {}; // region → namespace that last found a character
 
 let cachedToken = null; // { token, expires }
 
@@ -65,26 +71,35 @@ export async function POST(request) {
   if (!character.realm) return json({ error: 'Add your realm to this character first (Edit character → Realm).' }, 400);
 
   const region = (process.env.BLIZZARD_REGION || 'eu').toLowerCase();
-  const namespace = `${process.env.BLIZZARD_NAMESPACE || 'profile-classic1x'}-${region}`;
   const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realmSlug(character.realm))}/${encodeURIComponent(character.name.toLowerCase())}`;
-  const query = `?namespace=${namespace}&locale=en_GB`;
+  const forced = process.env.BLIZZARD_NAMESPACE?.trim();
+  const tryList = forced
+    ? [forced]
+    : [...new Set([workingNamespace[region], ...NAMESPACE_GUESSES].filter(Boolean))];
 
   try {
     const bnet = await blizzardToken();
     const headers = { Authorization: `Bearer ${bnet}` };
-    const [profileRes, equipRes] = await Promise.all([
-      fetch(base + query, { headers, cache: 'no-store' }),
-      fetch(base + '/equipment' + query, { headers, cache: 'no-store' }),
-    ]);
+    let profileRes, equipRes, used = null, lastStatus = 404;
+    for (const ns of tryList) {
+      const query = `?namespace=${ns}-${region}&locale=en_GB`;
+      [profileRes, equipRes] = await Promise.all([
+        fetch(base + query, { headers, cache: 'no-store' }),
+        fetch(base + '/equipment' + query, { headers, cache: 'no-store' }),
+      ]);
+      if (profileRes.ok && equipRes.ok) { used = ns; break; }
+      lastStatus = profileRes.ok ? equipRes.status : profileRes.status;
+    }
 
-    if (profileRes.status === 404 || equipRes.status === 404) {
+    if (!used && lastStatus === 404) {
       return json({
         error: `Blizzard couldn't find ${character.name} on ${character.realm} (${region.toUpperCase()}). Check the name and realm spelling, and log out of the character once in game. Blizzard only updates profiles when you log out.`,
       }, 404);
     }
-    if (!profileRes.ok || !equipRes.ok) {
-      return json({ error: `Blizzard's API returned an error (${profileRes.status}/${equipRes.status}). It may not support this game version yet.` }, 502);
+    if (!used) {
+      return json({ error: `Blizzard's API returned an error (${lastStatus}). It may not support this game version yet.` }, 502);
     }
+    if (!forced) workingNamespace[region] = used;
 
     const profile = await profileRes.json();
     const equipment = await equipRes.json();
@@ -100,7 +115,7 @@ export async function POST(request) {
       .filter((i) => i.slot && i.gameId);
 
     const result = await applySync(supabase, character.id, { level: profile.level, items, source: 'battle.net' });
-    return json({ ok: true, level: profile.level, ...result });
+    return json({ ok: true, level: profile.level, namespace: used, ...result });
   } catch (e) {
     return json({ error: e.message ?? 'Sync failed.' }, 500);
   }

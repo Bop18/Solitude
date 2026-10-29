@@ -23,7 +23,8 @@ export default function Dashboard() {
   useEffect(() => {
     const again = () => setReload((n) => n + 1);
     window.addEventListener('solitude:signup', again);
-    return () => window.removeEventListener('solitude:signup', again);
+    window.addEventListener('solitude:synced', again);
+    return () => { window.removeEventListener('solitude:signup', again); window.removeEventListener('solitude:synced', again); };
   }, []);
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import { useAuth } from './AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { SITE_NAME, SITE_ICON } from '@/lib/site';
 import ThemeToggle from './ThemeToggle';
+import AutoSync from './AutoSync';
 import { syncMainAccent } from '@/lib/theme';
 
 const LINKS = [
@@ -78,6 +79,7 @@ export default function Shell({ children }) {
           </div>
         </div>
       </header>
+      <AutoSync userId={session.user.id} />
       <main className="container">{children}</main>
     </>
   );
