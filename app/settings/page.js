@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { ACCENTS, getAppearance, setAppearance } from '@/lib/theme';
+import { ACCENTS, getAppearance, setAppearance, syncMainAccent } from '@/lib/theme';
 import { classColor } from '@/lib/wow';
 
 export default function SettingsPage() {
   const { session, profile, refreshProfile } = useAuth();
   const userId = session?.user?.id;
   const [mode, setMode] = useState('system');
-  const [accent, setAccent] = useState('solitude');
+  const [accent, setAccent] = useState('main');
   const [main, setMain] = useState(null);
   const [name, setName] = useState('');
   const [saved, setSaved] = useState('');
@@ -27,7 +27,11 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!userId) return;
     supabase.from('characters').select('name, class, is_main, level').eq('owner', userId)
-      .then(({ data }) => setMain((data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0] ?? null));
+      .then(({ data }) => {
+        const m = (data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0] ?? null;
+        setMain(m);
+        if (m) syncMainAccent(m.class);
+      });
   }, [userId]);
 
   function pickMode(m) {
@@ -66,19 +70,20 @@ export default function SettingsPage() {
         </div>
 
         <label>Colour theme</label>
+        <p className="muted small" style={{ marginTop: 0 }}>By default the site uses your main&apos;s class colour. Pick another one any time.</p>
         <div className="swatches">
+          <button className={`swatch ${accent === 'main' ? 'on' : ''}`} onClick={() => pickAccent('main')} aria-pressed={accent === 'main'} disabled={!main}>
+            <span className="swatch-dot" style={{ background: main ? classColor(main.class) : 'var(--muted)' }} />
+            My main{main ? ` (${main.class})` : ''}
+          </button>
           {ACCENTS.map((a) => (
             <button key={a.id} className={`swatch ${accent === a.id ? 'on' : ''}`} onClick={() => pickAccent(a.id)} aria-pressed={accent === a.id}>
               <span className="swatch-dot" style={{ background: a.swatch, boxShadow: `0 0 14px ${a.swatch}` }} />
               {a.name}
             </button>
           ))}
-          <button className={`swatch ${accent === 'main' ? 'on' : ''}`} onClick={() => pickAccent('main')} aria-pressed={accent === 'main'} disabled={!main}>
-            <span className="swatch-dot" style={{ background: main ? classColor(main.class) : 'var(--muted)' }} />
-            Match my main{main ? ` (${main.class})` : ''}
-          </button>
         </div>
-        {!main && <p className="muted small">Add a character to use &quot;Match my main&quot;.</p>}
+        {!main && <p className="muted small">Add a character and the site will use your main&apos;s class colour automatically.</p>}
       </section>
 
       <section className="panel">
