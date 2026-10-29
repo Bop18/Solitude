@@ -540,3 +540,46 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
 .todo-up .todo-icon { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
 .todo-text { flex: 1; min-width: 0; }
 .todo-item .btn { flex: none; }
+
+/* ---------- Stronger theme colour ----------
+   Everything below is driven by --accent, so it follows whichever
+   colour theme (or main's class) the person has. */
+:root { --theme-strength: 34%; }
+:root[data-theme='light'] { --theme-strength: 22%; }
+
+body {
+  background:
+    radial-gradient(1100px 700px at 0% -10%, color-mix(in srgb, var(--accent) var(--theme-strength), transparent), transparent 70%),
+    radial-gradient(900px 600px at 100% 0%, color-mix(in srgb, var(--accent) calc(var(--theme-strength) * 0.45), transparent), transparent 70%),
+    radial-gradient(1000px 700px at 100% 110%, var(--glow-2), transparent 70%),
+    radial-gradient(800px 600px at 0% 100%, var(--glow-1), transparent 70%),
+    color-mix(in srgb, var(--accent) 4%, var(--bg));
+  background-attachment: fixed;
+}
+
+/* Top bar: a coloured line along the bottom and a tinted glass */
+.topbar {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, var(--bg)), color-mix(in srgb, var(--bg) 82%, transparent) 60%);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 1px 24px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.brand-icon { color: var(--accent); text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent); }
+.nav a.active { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+
+/* Panels: a soft wash of the theme colour from the top edge */
+.panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 11%, transparent), transparent 160px),
+    var(--panel);
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+}
+.panel h2 { color: color-mix(in srgb, var(--accent) 30%, var(--text)); }
+
+/* Page titles pick up the colour too */
+h1 {
+  background: linear-gradient(90deg, var(--text), var(--accent) 140%); display: inline-block;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* Level bars and buttons glow a little in dark mode */
+:root:not([data-theme='light']) .btn:not(.ghost) { box-shadow: 0 4px 22px -8px color-mix(in srgb, var(--accent) 80%, transparent); }

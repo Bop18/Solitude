@@ -31,7 +31,7 @@ export default function EventPage() {
 
   const load = useCallback(async () => {
     const [ev, su, ch] = await Promise.all([
-      supabase.from('events').select('*, profiles(display_name), dungeons(id, name)').eq('id', id).maybeSingle(),
+      supabase.from('events').select('*, profiles!created_by(display_name), dungeons!dungeon_id(id, name)').eq('id', id).maybeSingle(),
       supabase.from('event_signups').select('*, profiles(display_name), characters(name, class, level)').eq('event_id', id),
       supabase.from('characters').select('*').eq('owner', userId).order('is_main', { ascending: false }),
     ]);
@@ -67,7 +67,7 @@ export default function EventPage() {
   useEffect(() => { if (userId) load(); }, [load, userId]);
 
   if (!loaded) return <p className="muted">Loading…</p>;
-  if (!event) return <p>Event not found. <Link href="/events">Back to events</Link></p>;
+  if (!event) return <p>{error ? <span className="error">Couldn&apos;t load this event: {error}</span> : 'Event not found.'} <Link href="/events">Back to events</Link></p>;
 
   const mySignup = signups.find((s) => s.user_id === userId);
   const going = signups.filter((s) => s.status === 'going');

@@ -35,7 +35,7 @@ export default function TonightBanner() {
     const [ev, mine] = await Promise.all([
       supabase
         .from('events')
-        .select('*, dungeons(name), event_signups(user_id, role, status, characters(name, class), profiles(display_name))')
+        .select('*, dungeons!dungeon_id(name), event_signups(user_id, role, status, characters(name, class), profiles(display_name))')
         .gte('starts_at', from)
         .lte('starts_at', to)
         .order('starts_at')
