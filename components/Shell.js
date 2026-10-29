@@ -7,6 +7,7 @@ import { useAuth } from './AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { SITE_NAME, SITE_ICON } from '@/lib/site';
 import ThemeToggle from './ThemeToggle';
+import { syncMainAccent } from '@/lib/theme';
 
 const LINKS = [
   { href: '/', label: 'Dashboard' },
@@ -31,6 +32,15 @@ export default function Shell({ children }) {
     if (!loading && !session && !isPublic) router.replace('/login');
     if (!loading && session && pathname === '/login') router.replace('/');
   }, [loading, session, isPublic, pathname, router]);
+
+  useEffect(() => {
+    const id = session?.user?.id;
+    if (!id) return;
+    supabase.from('characters').select('class, is_main, level').eq('owner', id).then(({ data }) => {
+      const main = (data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0];
+      if (main) syncMainAccent(main.class);
+    });
+  }, [session?.user?.id]);
 
   if (isPublic) {
     return (
@@ -62,7 +72,7 @@ export default function Shell({ children }) {
             ))}
           </nav>
           <div className="user">
-            <span className="muted small">{profile?.display_name ?? session.user.email}</span>
+            <Link href="/settings" className="user-link small" title="Settings: theme and your name">⚙ {profile?.display_name ?? session.user.email}</Link>
             <ThemeToggle />
             <button className="btn ghost small" onClick={() => supabase.auth.signOut()}>Log out</button>
           </div>

@@ -8,7 +8,8 @@ A members-only site for our WoW group: track characters, levels and gear, see wh
 
 | Page | What it does |
 |---|---|
-| **Dashboard** | Next runs, the levelling race, and an **activity feed** ("Roob hit level 40!", "Bop got [Cruel Barb]") |
+| **Dashboard** | A **Tonight** banner with a live countdown and one-tap "I'm in", **your next steps** (unanswered runs, your best upgrade dungeon, missing availability), a **suggested next run** (best time + the dungeon with the most upgrades for whoever's free), next runs, the levelling race and an **activity feed** |
+| **Settings** | Click your name in the top bar: light/dark, a colour theme (Mage, Warlock, Druid… or "match my main") and your display name |
 | **Roster** | Everyone's characters with class colours and level bars. **Ding! +1** when you level |
 | **Availability** | Paint the hours you can play (click and drag). The group grid shows overlap and when you have a tank + healer + 5; best times come with a one-click **Plan a run** |
 | **Events** | Plan a run, sign up with a character and role. Linked to a dungeon, it lists the loot the group needs, with an **Award** button |
@@ -167,7 +168,8 @@ Level milestones post every 10 levels and at max level. To change that, edit `ac
 
 ```
 app/
-  page.js                  Dashboard (runs, levelling race, activity feed)
+  page.js                  Dashboard (tonight banner, next steps, suggested run, levelling race, activity)
+  settings/page.js         Theme, colour and display name
   login/page.js            Login / sign-up
   roster/page.js           Characters and levels
   availability/page.js     Weekly availability + heatmap

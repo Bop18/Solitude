@@ -8,6 +8,9 @@ import EventCard from '@/components/EventCard';
 import LevelBar from '@/components/LevelBar';
 import ActivityFeed from '@/components/ActivityFeed';
 import WeeklyCard from '@/components/WeeklyCard';
+import TonightBanner from '@/components/TonightBanner';
+import NextSteps from '@/components/NextSteps';
+import SuggestedRun from '@/components/SuggestedRun';
 import { MAX_LEVEL, classColor } from '@/lib/wow';
 
 export default function Dashboard() {
@@ -15,6 +18,13 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [mains, setMains] = useState([]);
   const [error, setError] = useState('');
+
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const again = () => setReload((n) => n + 1);
+    window.addEventListener('solitude:signup', again);
+    return () => window.removeEventListener('solitude:signup', again);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -40,7 +50,7 @@ export default function Dashboard() {
       }
       setMains([...byPlayer.values()].sort((a, b) => b.level - a.level));
     })();
-  }, []);
+  }, [reload]);
 
   const capped = mains.filter((c) => c.level >= MAX_LEVEL).length;
   const avg = mains.length ? Math.round(mains.reduce((sum, c) => sum + c.level, 0) / mains.length) : 0;
@@ -49,9 +59,11 @@ export default function Dashboard() {
     <>
       <h1>Welcome back{profile?.display_name ? `, ${profile.display_name}` : ''}</h1>
       {error && <p className="error">{error}</p>}
+      <TonightBanner />
 
       <div className="grid-2">
         <div className="stack-panels">
+          <NextSteps />
           <section className="panel">
             <div className="row spread">
               <h2>Next runs</h2>
@@ -74,6 +86,7 @@ export default function Dashboard() {
         </div>
 
         <div className="stack-panels">
+        <SuggestedRun />
         <WeeklyCard />
         <section className="panel">
           <div className="row spread">
