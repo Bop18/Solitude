@@ -239,6 +239,15 @@ tbody tr:last-child td { border-bottom: none; }
 .prio-btn-3 { background: transparent; color: var(--text); border-color: var(--border-strong); }
 .prio-btn-3:hover { background: var(--accent-soft); }
 
+/* ---------- Item names ---------- */
+.item-name { font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; vertical-align: middle; }
+.item-icon {
+  width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+  border: 1px solid; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+/* Bigger icons in the main loot tables */
+.item-cell > .item-name .item-icon { width: 26px; height: 26px; border-radius: 5px; }
+
 /* ---------- Loot tables & upgrades ---------- */
 .loot-table td { vertical-align: top; }
 .item-cell { min-width: 240px; }

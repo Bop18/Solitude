@@ -59,6 +59,7 @@ export default function ImportItems({ onDone, compact = false }) {
         boss: r.b ?? null,
         drop_chance: r.dc ?? null,
         notes: r.nt ?? null,
+        icon: r.ic ?? null,
         link: `https://www.wowhead.com/classic/item=${r.id}`,
       }));
 

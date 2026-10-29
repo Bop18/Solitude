@@ -41,6 +41,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    1. `supabase/schema.sql`
    2. `supabase/schema-2-loot.sql`
    3. `supabase/schema-3-auto-loot.sql`
+   4. `supabase/schema-4-icons.sql`
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
 4. **Project Settings → API Keys**: copy the **Project URL** and the **publishable / anon** key.
 
