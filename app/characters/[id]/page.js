@@ -1,73 +1,105 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
+import ItemSearch from '@/components/ItemSearch';
+import WantControl from '@/components/WantControl';
 import LevelBar from '@/components/LevelBar';
-import { GEAR_SLOTS, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor } from '@/lib/wow';
+import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor } from '@/lib/wow';
+import { upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
+
+function gainLabel(u) {
+  if (u.unknown) return '?';
+  if (u.gain == null) return 'empty slot';
+  return `+${Math.max(1, Math.round(u.gain * 100))}%`;
+}
 
 export default function CharacterPage() {
   const { id } = useParams();
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const router = useRouter();
 
   const [char, setChar] = useState(null);
-  const [gear, setGear] = useState({});      // slot -> row
-  const [edits, setEdits] = useState({});    // slot -> text being typed
+  const [gear, setGear] = useState({});          // slot -> row (with items)
+  const [editingSlot, setEditingSlot] = useState(null);
   const [wishes, setWishes] = useState([]);
-  const [allItems, setAllItems] = useState([]);
+  const [received, setReceived] = useState([]);
+  const [nearby, setNearby] = useState([]);      // dungeon items around this level
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [editForm, setEditForm] = useState(null); // null = not editing
   const [saving, setSaving] = useState(false);
-  const router = useRouter();
 
   const load = useCallback(async () => {
-    const [c, g, w, it] = await Promise.all([
+    const [c, g, w, h] = await Promise.all([
       supabase.from('characters').select('*, profiles(display_name)').eq('id', id).maybeSingle(),
       supabase.from('character_gear').select('*, items(*)').eq('character_id', id),
       supabase.from('wishlist').select('*, items(*, dungeons(id, name))').eq('character_id', id).order('obtained').order('priority'),
-      supabase.from('items').select('id, name, quality'),
+      supabase.from('loot_history').select('*, items(*), events(id, title)').eq('character_id', id).order('received_at', { ascending: false }).limit(30),
     ]);
-    const err = c.error || g.error || w.error || it.error;
+    const err = c.error || g.error || w.error || h.error;
     if (err) setError(err.message);
     setChar(c.data);
     setGear(Object.fromEntries((g.data ?? []).map((row) => [row.slot, row])));
     setWishes(w.data ?? []);
-    setAllItems(it.data ?? []);
+    setReceived(h.data ?? []);
+
+    // Dungeon loot around this character's level, for "Upgrades to look for"
+    if (c.data) {
+      const lvl = c.data.level;
+      const { data: near } = await supabase
+        .from('items')
+        .select('*, dungeons(id, name)')
+        .not('dungeon_id', 'is', null)
+        .lte('req_level', lvl + 2)
+        .gte('req_level', Math.max(1, lvl - 12))
+        .limit(2000);
+      setNearby(near ?? []);
+    }
     setLoaded(true);
   }, [id]);
 
   useEffect(() => { if (userId) load(); }, [load, userId]);
+
+  const suggestions = useMemo(() => {
+    if (!char) return [];
+    const have = new Set(received.map((r) => r.item_id));
+    const ranked = nearby
+      .filter((item) => !have.has(item.id))
+      .map((item) => ({ item, u: upgradeFor(char, item, gear) }))
+      .filter((x) => x.u && !x.u.unknown)
+      .sort((a, b) => (b.u.gain ?? 0.6) - (a.u.gain ?? 0.6) || b.u.score - a.u.score);
+    // Best 2 per slot, so it covers the whole character
+    return spreadAcrossSlots(ranked, 2).slice(0, 12);
+  }, [nearby, char, gear, received]);
 
   if (!loaded) return <p className="muted">Loading…</p>;
   if (!char) return <p>Character not found. <Link href="/roster">Back to roster</Link></p>;
 
   const isMine = char.owner === userId;
 
-  async function saveSlot(slot) {
-    const text = (edits[slot] ?? '').trim();
+  // ---------- Gear ----------
+  async function saveSlot(slot, item, freeText) {
     setError('');
-    if (!text) return;
-    const match = allItems.find((i) => i.name.toLowerCase() === text.toLowerCase());
     const { error } = await supabase.from('character_gear').upsert({
       character_id: Number(id),
       slot,
-      item_name: match?.name ?? text,
-      item_id: match?.id ?? null,
+      item_name: item?.name ?? freeText,
+      item_id: item?.id ?? null,
       updated_at: new Date().toISOString(),
     });
     if (error) return setError(error.message);
-
-    // Got something off your wishlist? Tick it off automatically.
-    if (match) {
-      const wish = wishes.find((w) => w.item_id === match.id && !w.obtained);
+    // Was it on the Need list? Tick it off.
+    if (item) {
+      const wish = wishes.find((w) => w.item_id === item.id && !w.obtained);
       if (wish) await supabase.from('wishlist').update({ obtained: true }).eq('id', wish.id);
     }
-    setEdits({ ...edits, [slot]: undefined });
+    setEditingSlot(null);
     load();
   }
 
@@ -77,6 +109,7 @@ export default function CharacterPage() {
     load();
   }
 
+  // ---------- Need list ----------
   async function updateWish(wishId, changes) {
     const { error } = await supabase.from('wishlist').update(changes).eq('id', wishId);
     if (error) setError(error.message);
@@ -89,19 +122,26 @@ export default function CharacterPage() {
     load();
   }
 
-  const openWishes = wishes.filter((w) => !w.obtained);
-  function startEdit() {
-    setEditForm({
-      name: char.name,
-      realm: char.realm ?? '',
-      class: char.class,
-      race: char.race ?? '',
-      role: char.role ?? 'dps',
-      level: char.level,
-      is_main: char.is_main,
-    });
+  async function gotIt(itemId) {
+    // Recording it in loot history also ticks it off and posts to the feed
+    const { error } = await supabase.from('loot_history').insert({ item_id: itemId, character_id: Number(id) });
+    if (error) setError(error.message);
+    load();
   }
 
+  async function removeReceived(rowId) {
+    const { error } = await supabase.from('loot_history').delete().eq('id', rowId);
+    if (error) setError(error.message);
+    load();
+  }
+
+  // ---------- Edit character ----------
+  function startEdit() {
+    setEditForm({
+      name: char.name, realm: char.realm ?? '', class: char.class, race: char.race ?? '',
+      role: char.role ?? 'dps', level: char.level, is_main: char.is_main,
+    });
+  }
   const setField = (field) => (e) =>
     setEditForm({ ...editForm, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
@@ -109,7 +149,6 @@ export default function CharacterPage() {
     e.preventDefault();
     setSaving(true);
     setError('');
-    // Only one main per player
     if (editForm.is_main && !char.is_main) {
       await supabase.from('characters').update({ is_main: false }).eq('owner', userId).neq('id', char.id);
     }
@@ -133,41 +172,33 @@ export default function CharacterPage() {
   }
 
   async function deleteCharacter() {
-    if (!confirm(`Delete ${char.name}? Their gear and wishlist will be deleted too.`)) return;
+    if (!confirm(`Delete ${char.name}? Their gear, Need list and loot history will be deleted too.`)) return;
     const { error } = await supabase.from('characters').delete().eq('id', char.id);
     if (error) return setError(error.message);
     router.push('/roster');
   }
 
-  const doneWishes = wishes.filter((w) => w.obtained);
+  const openWishes = wishes.filter((w) => !w.obtained);
   const filled = GEAR_SLOTS.filter((s) => gear[s]).length;
+  const handTyped = GEAR_SLOTS.filter((s) => gear[s] && !gear[s].items).length;
 
   return (
     <>
       <p><Link href="/roster">← Roster</Link></p>
       <div className="row spread">
         <h1 style={{ color: classColor(char.class) }}>{char.name}</h1>
-        {isMine && !editForm && (
-          <button className="btn ghost small" onClick={startEdit}>✎ Edit character</button>
-        )}
+        {isMine && !editForm && <button className="btn ghost small" onClick={startEdit}>✎ Edit character</button>}
       </div>
 
       {isMine && editForm && (
         <form onSubmit={saveEdit} className="panel stack">
           <h2>Edit character</h2>
           <div className="form-grid">
-            <div>
-              <label htmlFor="ename">Name</label>
-              <input id="ename" required value={editForm.name} onChange={setField('name')} />
-            </div>
-            <div>
-              <label htmlFor="erealm">Realm</label>
-              <input id="erealm" value={editForm.realm} onChange={setField('realm')} placeholder="Optional" />
-            </div>
+            <div><label htmlFor="ename">Name</label><input id="ename" required value={editForm.name} onChange={setField('name')} /></div>
+            <div><label htmlFor="erealm">Realm</label><input id="erealm" value={editForm.realm} onChange={setField('realm')} placeholder="Optional" /></div>
             <div>
               <label htmlFor="eclass">Class</label>
               <select id="eclass" value={editForm.class} onChange={setField('class')}>
-                {/* Keep an old class selectable even if it's been removed from the list */}
                 {!CLASS_NAMES.includes(editForm.class) && <option>{editForm.class}</option>}
                 {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
               </select>
@@ -186,14 +217,9 @@ export default function CharacterPage() {
                 {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
               </select>
             </div>
-            <div>
-              <label htmlFor="elevel">Level</label>
-              <input id="elevel" type="number" min={1} max={MAX_LEVEL} value={editForm.level} onChange={setField('level')} />
-            </div>
+            <div><label htmlFor="elevel">Level</label><input id="elevel" type="number" min={1} max={MAX_LEVEL} value={editForm.level} onChange={setField('level')} /></div>
           </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={editForm.is_main} onChange={setField('is_main')} /> This is my main
-          </label>
+          <label className="checkbox"><input type="checkbox" checked={editForm.is_main} onChange={setField('is_main')} /> This is my main</label>
           <div className="row spread">
             <div className="row">
               <button className="btn" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
@@ -212,44 +238,85 @@ export default function CharacterPage() {
       <div style={{ maxWidth: 320, marginBottom: '1.25rem' }}><LevelBar level={char.level} className={char.class} /></div>
       {error && <p className="error">{error}</p>}
 
+      {/* ---------- Upgrades to look for ---------- */}
+      <section className="panel">
+        <h2>Upgrades to look for</h2>
+        <p className="muted small">
+          The best dungeon drops for a level {char.level} {char.class}, compared with the gear below.
+          {filled === 0 && isMine && ' Fill in your gear for better suggestions. Right now every slot counts as empty.'}
+          {handTyped > 0 && ` ${handTyped} slot${handTyped === 1 ? ' was' : 's were'} typed by hand, so ${handTyped === 1 ? 'it' : 'they'} can't be compared. Pick from the search list instead.`}
+        </p>
+        {suggestions.length === 0 ? (
+          <p className="muted">No dungeon upgrades found around level {char.level}. {nearby.length === 0 && 'Has the Classic loot list been loaded on the Dungeons page?'}</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="loot-table">
+              <thead><tr><th>Item</th><th>Gain</th><th>Where</th><th></th></tr></thead>
+              <tbody>
+                {suggestions.map(({ item, u }) => (
+                  <tr key={item.id}>
+                    <td className="item-cell">
+                      <ItemName item={item} />
+                      <div className="muted small">{item.slot}{item.req_level ? ` · req ${item.req_level}` : ''}{u.replaces ? ` · replaces ${u.replaces.name}` : ''}</div>
+                      {statSummary(item) && <div className="stat-line">{statSummary(item)}</div>}
+                    </td>
+                    <td><span className={`gain ${u.gain == null ? 'gain-soft' : ''}`}>{gainLabel(u)}</span></td>
+                    <td>
+                      <Link href={`/dungeons/${item.dungeons.id}`}>{item.dungeons.name}</Link>
+                      <div className="muted small">{item.boss ?? item.notes ?? 'Trash'}{item.drop_chance ? ` · ${item.drop_chance}%` : ''}</div>
+                    </td>
+                    <td className="actions-cell">
+                      {isMine && (
+                        <WantControl itemId={item.id} wanters={wishes.filter((w) => w.item_id === item.id && !w.obtained)} charId={char.id} onChanged={load} onError={setError} />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       <div className="grid-2">
+        {/* ---------- Gear ---------- */}
         <section className="panel">
           <div className="row spread">
             <h2>Gear</h2>
             <span className="muted small">{filled}/{GEAR_SLOTS.length} slots</span>
           </div>
-          {isMine && <p className="muted small">Type what you&apos;re wearing and press Enter. Items from the dungeon lists autocomplete and get coloured.</p>}
-          <datalist id="item-names">
-            {allItems.map((i) => <option key={i.id} value={i.name} />)}
-          </datalist>
+          {isMine && <p className="muted small">Click Add, start typing, and pick your item from the list so the site knows its stats.</p>}
           <table>
             <tbody>
               {GEAR_SLOTS.map((slot) => {
                 const row = gear[slot];
-                const editing = edits[slot] !== undefined;
+                const editing = editingSlot === slot;
                 return (
                   <tr key={slot}>
                     <td className="muted small" style={{ width: 90 }}>{slot}</td>
                     <td>
                       {isMine && editing ? (
-                        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); saveSlot(slot); }}>
-                          <input
-                            list="item-names" autoFocus value={edits[slot]}
-                            onChange={(e) => setEdits({ ...edits, [slot]: e.target.value })}
-                            onKeyDown={(e) => e.key === 'Escape' && setEdits({ ...edits, [slot]: undefined })}
-                            aria-label={`${slot} item`}
+                        <div className="row" style={{ flexWrap: 'nowrap' }}>
+                          <ItemSearch
+                            slots={ITEM_SLOTS_FOR_GEAR[slot] ?? [slot]}
+                            onPick={(item) => saveSlot(slot, item)}
+                            onFreeText={(text) => saveSlot(slot, null, text)}
+                            onCancel={() => setEditingSlot(null)}
                           />
-                          <button className="btn small" type="submit">Save</button>
-                        </form>
+                          <button className="btn ghost small" onClick={() => setEditingSlot(null)} aria-label="Cancel">✕</button>
+                        </div>
                       ) : row ? (
-                        <ItemName item={row.items ?? { name: row.item_name, quality: 'common' }} />
+                        <>
+                          <ItemName item={row.items ?? { name: row.item_name, quality: 'common' }} />
+                          {!row.items && <span className="muted small" title="Typed by hand, so its stats aren't known"> ?</span>}
+                        </>
                       ) : (
                         <span className="muted">—</span>
                       )}
                     </td>
                     {isMine && !editing && (
                       <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                        <button className="btn ghost small" onClick={() => setEdits({ ...edits, [slot]: row?.item_name ?? '' })}>{row ? 'Change' : 'Add'}</button>
+                        <button className="btn ghost small" onClick={() => setEditingSlot(slot)}>{row ? 'Change' : 'Add'}</button>
                         {row && <button className="btn ghost small" style={{ marginLeft: 4 }} onClick={() => clearSlot(slot)} aria-label={`Clear ${slot}`}>✕</button>}
                       </td>
                     )}
@@ -261,55 +328,66 @@ export default function CharacterPage() {
           </table>
         </section>
 
-        <section className="panel">
-          <h2>Wishlist</h2>
-          {openWishes.length === 0 && (
-            <p className="muted">
-              Nothing wanted yet.{isMine && <> Open a <Link href="/dungeons">dungeon</Link> and hit <strong>Want</strong> on items.</>}
-            </p>
-          )}
-          <div className="stack">
-            {openWishes.map((w) => (
-              <div key={w.id} className="row spread" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
-                <div>
-                  <ItemName item={w.items} />
-                  <div className="muted small">
-                    {w.items.dungeons ? <Link href={`/dungeons/${w.items.dungeons.id}`}>{w.items.dungeons.name}</Link> : 'Unknown source'}
-                    {w.items.boss ? ` · ${w.items.boss}` : ''}
-                    {w.items.slot ? ` · ${w.items.slot}` : ''}
-                  </div>
-                </div>
-                {isMine ? (
-                  <div className="row">
-                    <select value={w.priority} onChange={(e) => updateWish(w.id, { priority: Number(e.target.value) })} style={{ width: 'auto' }} aria-label="Priority">
-                      {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                    <button className="btn small" onClick={() => updateWish(w.id, { obtained: true })}>Got it!</button>
-                    <button className="btn ghost small" onClick={() => removeWish(w.id)} aria-label="Remove">✕</button>
-                  </div>
-                ) : (
-                  <span className="badge">{PRIORITY[w.priority]}</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {doneWishes.length > 0 && (
-            <>
-              <h3 style={{ marginTop: '1.25rem', fontSize: '1rem' }} className="muted">Got ({doneWishes.length})</h3>
-              <div className="row">
-                {doneWishes.map((w) => (
-                  <span key={w.id} style={{ opacity: 0.7 }}>
+        <div>
+          {/* ---------- Need list ---------- */}
+          <section className="panel">
+            <h2>Needs</h2>
+            {openWishes.length === 0 && (
+              <p className="muted">
+                Nothing needed yet.{isMine && <> Hit <strong>Need</strong> on an upgrade above, or browse a <Link href="/dungeons">dungeon</Link>.</>}
+              </p>
+            )}
+            <div className="stack">
+              {openWishes.map((w) => (
+                <div key={w.id} className="row spread" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+                  <div>
                     <ItemName item={w.items} />
-                    {isMine && (
-                      <button className="btn ghost small" style={{ marginLeft: 4 }} onClick={() => updateWish(w.id, { obtained: false })} title="Move back to wishlist">↺</button>
+                    <div className="muted small">
+                      {w.items.dungeons ? <Link href={`/dungeons/${w.items.dungeons.id}`}>{w.items.dungeons.name}</Link> : 'Unknown source'}
+                      {w.items.boss ? ` · ${w.items.boss}` : ''}
+                    </div>
+                  </div>
+                  {isMine ? (
+                    <div className="row">
+                      <select value={w.priority} onChange={(e) => updateWish(w.id, { priority: Number(e.target.value) })} style={{ width: 'auto' }} aria-label="Priority">
+                        {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                      <button className="btn small" onClick={() => gotIt(w.item_id)}>Got it!</button>
+                      <button className="btn ghost small" onClick={() => removeWish(w.id)} aria-label="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <span className={`prio prio-${w.priority}`}>{PRIORITY[w.priority]}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ---------- Loot received ---------- */}
+          <section className="panel">
+            <h2>Loot received</h2>
+            {received.length === 0 ? (
+              <p className="muted">Nothing recorded yet.</p>
+            ) : (
+              <div className="stack">
+                {received.map((r) => (
+                  <div key={r.id} className="row spread">
+                    <div>
+                      <ItemName item={r.items} />
+                      <div className="muted small">
+                        {new Date(r.received_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                        {r.events && <> · <Link href={`/events/${r.events.id}`}>{r.events.title}</Link></>}
+                      </div>
+                    </div>
+                    {(isMine || r.recorded_by === userId) && (
+                      <button className="btn ghost small" onClick={() => removeReceived(r.id)} title="Remove this record">✕</button>
                     )}
-                  </span>
+                  </div>
                 ))}
               </div>
-            </>
-          )}
-        </section>
+            )}
+          </section>
+        </div>
       </div>
     </>
   );

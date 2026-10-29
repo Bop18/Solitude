@@ -85,6 +85,15 @@ export default function EventPage() {
     load();
   }
 
+  async function award(w) {
+    setError('');
+    const { error } = await supabase
+      .from('loot_history')
+      .insert({ item_id: w.item_id, character_id: w.character_id, event_id: Number(id) });
+    if (error) setError(error.message);
+    load();
+  }
+
   async function withdraw() {
     await supabase.from('event_signups').delete().match({ event_id: Number(id), user_id: userId });
     load();
@@ -162,7 +171,7 @@ export default function EventPage() {
           ) : (
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Item</th><th>Boss</th><th>For</th></tr></thead>
+                <thead><tr><th>Item</th><th>Boss</th><th>For</th><th></th></tr></thead>
                 <tbody>
                   {needs.map((w) => (
                     <tr key={w.id}>
@@ -171,6 +180,9 @@ export default function EventPage() {
                       <td>
                         <Link href={`/characters/${w.characters.id}`} style={{ color: classColor(w.characters.class) }}>{w.characters.name}</Link>
                         {' '}<span className={`prio prio-${w.priority}`}>{PRIORITY[w.priority]}</span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button className="btn small" onClick={() => award(w)} title={`Record that ${w.characters.name} got this`}>Award</button>
                       </td>
                     </tr>
                   ))}

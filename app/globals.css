@@ -167,6 +167,8 @@ h2 { font-size: 1.2rem; }
 }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
 .grid-2 > .panel { margin-bottom: 0; }
+.stack-panels { display: flex; flex-direction: column; gap: 1.25rem; }
+.stack-panels > .panel { margin-bottom: 0; }
 .grid-2 + .panel, .grid-2 + .grid-2 { margin-top: 1.25rem; }
 .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
 .spread { justify-content: space-between; }
@@ -236,6 +238,57 @@ tbody tr:last-child td { border-bottom: none; }
 .prio-btn-1:hover { background: var(--danger); filter: brightness(1.1); }
 .prio-btn-3 { background: transparent; color: var(--text); border-color: var(--border-strong); }
 .prio-btn-3:hover { background: var(--accent-soft); }
+
+/* ---------- Loot tables & upgrades ---------- */
+.loot-table td { vertical-align: top; }
+.item-cell { min-width: 240px; }
+.stat-line { font-size: 0.8rem; color: var(--ok); margin-top: 0.15rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; max-width: 220px; }
+.class-chip {
+  font-size: 0.75rem; font-weight: 600; padding: 0.08rem 0.45rem; border-radius: 999px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+.gain { font-size: 0.72rem; font-weight: 700; padding: 0.05rem 0.4rem; border-radius: 999px; color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }
+.gain-soft { color: var(--muted); background: var(--panel-2); font-weight: 600; }
+.ok-badge { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.actions-cell { white-space: nowrap; text-align: right; }
+.actions-cell > * + * { margin-left: 0.35rem; }
+.actions-cell .prio-picker { display: inline-flex; }
+.filters { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center; }
+.group-finds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
+.group-find { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; }
+.group-find-head { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
+.find-list { display: flex; flex-direction: column; gap: 0.25rem; }
+.find { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.9rem; }
+.import-panel { border-color: var(--accent); background: linear-gradient(135deg, var(--accent-soft), var(--panel)); }
+code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; border-radius: 5px; }
+
+/* ---------- Activity feed ---------- */
+.feed { display: flex; flex-direction: column; }
+.feed-item { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
+.feed-item:last-child { border-bottom: none; }
+.feed-icon { width: 30px; height: 30px; border-radius: 999px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); font-size: 0.9rem; }
+.feed-text { flex: 1; min-width: 0; }
+.feed-time { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+
+/* ---------- Item search ---------- */
+.item-search { position: relative; flex: 1; }
+.item-search-results {
+  position: absolute; z-index: 20; left: 0; top: calc(100% + 4px); min-width: 100%; width: max-content; max-width: min(460px, 90vw);
+  background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); max-height: 280px; overflow-y: auto;
+}
+.item-search-results button {
+  display: flex; width: 100%; justify-content: space-between; gap: 0.5rem; text-align: left; cursor: pointer;
+  padding: 0.5rem 0.7rem; border: none; background: none; color: var(--text); font: inherit; font-size: 0.9rem;
+}
+.item-search-results button:hover, .item-search-results button.active { background: var(--accent-soft); }
+.item-search-results button .muted { white-space: nowrap; }
+
+.tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
+.tabs a { padding: 0.4rem 0.9rem; border-radius: 999px; color: var(--muted); }
+.tabs a.active { background: var(--accent-soft); color: var(--accent); }
+.tabs a:hover { text-decoration: none; color: var(--text); }
 
 /* ---------- Availability grid ---------- */
 .avail { border-collapse: separate; border-spacing: 5px; }

@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { PRIORITY } from '@/lib/wow';
 
-// The Want button used on dungeon pages and Loot needs.
-// - Not wanted yet: "Want" / "Want too" → asks High / Medium / Low
-// - Already wanted by your character: change priority or remove
-// Everyone has their own request, so other people wanting an item never blocks you.
-export default function WantControl({ itemId, wanters, charId, onChanged, onError }) {
+// The Need button used on dungeon pages and Loot.
+// - Already have it (equipped or received): shows "✓ Have it"
+// - Not needed yet: "Need" / "Need too" → asks High / Medium / Low
+// - Already needed by your character: change priority or remove
+// Everyone has their own request, so other people needing an item never blocks you.
+export default function WantControl({ itemId, wanters, charId, have = false, onChanged, onError }) {
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const mine = charId ? wanters.find((w) => String(w.character_id) === String(charId)) : null;
@@ -25,11 +26,13 @@ export default function WantControl({ itemId, wanters, charId, onChanged, onErro
 
   if (!charId) {
     return (
-      <button className="btn small" onClick={() => onError?.('Add a character on the Roster page first, then you can want items.')}>
-        Want
+      <button className="btn small" onClick={() => onError?.('Add a character on the Roster page first, then you can need items.')}>
+        Need
       </button>
     );
   }
+
+  if (have && !mine) return <span className="badge ok-badge">✓ Have it</span>;
 
   if (picking) {
     return (
@@ -77,7 +80,7 @@ export default function WantControl({ itemId, wanters, charId, onChanged, onErro
 
   return (
     <button className="btn small" onClick={() => setPicking(true)}>
-      {wanters.length ? 'Want too' : 'Want'}
+      {wanters.length ? 'Need too' : 'Need'}
     </button>
   );
 }

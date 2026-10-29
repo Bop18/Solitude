@@ -1,5 +1,6 @@
 import './globals.css';
 import { Inter, Outfit } from 'next/font/google';
+import Script from 'next/script';
 import { AuthProvider } from '@/components/AuthProvider';
 import Shell from '@/components/Shell';
 import { SITE_NAME } from '@/lib/site';
@@ -35,6 +36,11 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <Shell>{children}</Shell>
         </AuthProvider>
+        {/* Hover an item name to see its full in-game tooltip */}
+        <Script id="wowhead-config" strategy="afterInteractive">
+          {`window.whTooltips = { colorLinks: false, iconizeLinks: false, renameLinks: false };`}
+        </Script>
+        <Script src="https://wow.zamimg.com/js/tooltips.js" strategy="afterInteractive" />
       </body>
     </html>
   );

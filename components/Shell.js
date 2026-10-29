@@ -14,7 +14,7 @@ const LINKS = [
   { href: '/availability', label: 'Availability' },
   { href: '/events', label: 'Events' },
   { href: '/dungeons', label: 'Dungeons' },
-  { href: '/loot', label: 'Loot needs' },
+  { href: '/loot', label: 'Loot' },
 ];
 
 const PUBLIC_PATHS = ['/login'];

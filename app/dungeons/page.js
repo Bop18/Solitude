@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
+import ImportItems from '@/components/ImportItems';
 
 export default function DungeonsPage() {
   const { session } = useAuth();
@@ -13,15 +14,18 @@ export default function DungeonsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', kind: 'dungeon', min_level: '', max_level: '', size: 5 });
   const [error, setError] = useState('');
+  const [hasGameData, setHasGameData] = useState(true); // null = database not updated yet
 
   const load = useCallback(async () => {
-    const [d, w, c] = await Promise.all([
+    const [d, w, c, gd] = await Promise.all([
       supabase.from('dungeons').select('*, items(id)').order('min_level', { ascending: true, nullsFirst: false }),
       supabase.from('wishlist').select('items(dungeon_id)').eq('obtained', false),
       supabase.from('characters').select('level, is_main').eq('owner', userId),
+      supabase.from('items').select('id', { count: 'exact', head: true }).not('game_id', 'is', null),
     ]);
     const err = d.error || w.error || c.error;
     if (err) return setError(err.message);
+    setHasGameData(gd.error ? null : (gd.count ?? 0) > 0);
 
     const wanted = {};
     for (const row of w.data) {
@@ -60,7 +64,7 @@ export default function DungeonsPage() {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Levels</th><th>Size</th><th>Items listed</th><th>Wanted</th></tr>
+            <tr><th>Name</th><th>Levels</th><th>Size</th><th>Items</th><th>Needed</th></tr>
           </thead>
           <tbody>
             {list.map((d) => (
@@ -87,8 +91,12 @@ export default function DungeonsPage() {
         <h1>Dungeons &amp; Raids</h1>
         <button className="btn ghost small" onClick={() => setShowAdd(!showAdd)}>{showAdd ? 'Cancel' : '+ Add dungeon'}</button>
       </div>
-      <p className="muted">Open a dungeon to see its loot, which classes want it, and who&apos;s after what. Anyone can add items.</p>
+      <p className="muted">Open a dungeon to see every drop, who it&apos;s best for, and what&apos;s an upgrade for your group.</p>
       {error && <p className="error">{error}</p>}
+      {hasGameData === false && <ImportItems onDone={load} />}
+      {hasGameData === null && (
+        <section className="panel"><p className="muted">To get the automatic loot list, run <code>supabase/schema-3-auto-loot.sql</code> in Supabase first.</p></section>
+      )}
 
       {showAdd && (
         <form onSubmit={addDungeon} className="panel stack">

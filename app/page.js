@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import EventCard from '@/components/EventCard';
 import LevelBar from '@/components/LevelBar';
+import ActivityFeed from '@/components/ActivityFeed';
 import { MAX_LEVEL, classColor } from '@/lib/wow';
 
 export default function Dashboard() {
@@ -49,19 +50,29 @@ export default function Dashboard() {
       {error && <p className="error">{error}</p>}
 
       <div className="grid-2">
-        <section className="panel">
-          <div className="row spread">
-            <h2>Next runs</h2>
-            <Link href="/events" className="small">Plan one →</Link>
-          </div>
-          {events.length === 0 ? (
-            <p className="muted">Nothing scheduled. Check <Link href="/availability">availability</Link> and plan a run.</p>
-          ) : (
-            <div className="event-list">{events.map((ev) => <EventCard key={ev.id} event={ev} />)}</div>
-          )}
-        </section>
+        <div className="stack-panels">
+          <section className="panel">
+            <div className="row spread">
+              <h2>Next runs</h2>
+              <Link href="/events" className="small">Plan one →</Link>
+            </div>
+            {events.length === 0 ? (
+              <p className="muted">Nothing scheduled. Check <Link href="/availability">availability</Link> and plan a run.</p>
+            ) : (
+              <div className="event-list">{events.map((ev) => <EventCard key={ev.id} event={ev} />)}</div>
+            )}
+          </section>
 
-        <section className="panel">
+          <section className="panel">
+            <div className="row spread">
+              <h2>Activity</h2>
+              <Link href="/loot/history" className="small">Loot history →</Link>
+            </div>
+            <ActivityFeed />
+          </section>
+        </div>
+
+        <section className="panel" style={{ alignSelf: 'start' }}>
           <div className="row spread">
             <h2>Levelling race</h2>
             <Link href="/roster" className="small">Full roster →</Link>
@@ -76,7 +87,7 @@ export default function Dashboard() {
                   <div key={c.id} className="row" style={{ flexWrap: 'nowrap' }}>
                     <span className="muted" style={{ width: '1.5rem' }}>{i + 1}.</span>
                     <div style={{ width: '40%', minWidth: 0 }}>
-                      <strong style={{ color: classColor(c.class) }}>{c.name}</strong>
+                      <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>
                       <div className="muted small">{c.profiles?.display_name}</div>
                     </div>
                     <div style={{ flex: 1 }}><LevelBar level={c.level} className={c.class} /></div>

@@ -1,95 +1,136 @@
 # ☾ Solitude
 
-A members-only site for our WoW group: track characters and levels, mark when you're free, and organise dungeon/raid runs with sign-ups.
+A members-only site for our WoW group: track characters, levels and gear, see what loot is an upgrade for whom, organise runs, and get it all posted to Discord.
 
 **Built with:** Next.js (website) · Supabase (accounts + database) · Vercel (free hosting)
 
-## What's in version 1
+## What it does
 
 | Page | What it does |
 |---|---|
-| **Login** | Members create an account with email + password |
-| **Dashboard** | Next 5 runs and a "levelling race" leaderboard of everyone's main |
-| **Roster** | Every member's characters with class colours and level bars. Add your own characters, hit **Ding! +1** when you level |
-| **Availability** | Tick when you can play each week; the group heatmap shows the best overlap |
-| **Events** | Plan a dungeon or raid, sign up with a character and role (tank/healer/DPS), see the group fill up. Link it to a dungeon to see what loot the group needs |
-| **Dungeons** | Every dungeon and raid with level ranges ("Your level" badge shows what fits you). Open one to see its loot by boss, filter by class, and hit **Want** |
-| **Character pages** | Click any character: their gear in every slot and their wishlist. Equipping a wishlisted item ticks it off automatically |
-| **Loot needs** | Everything anyone still wants, grouped by dungeon, so you can pick which run helps the most people |
+| **Dashboard** | Next runs, the levelling race, and an **activity feed** ("Roob hit level 40!", "Bop got [Cruel Barb]") |
+| **Roster** | Everyone's characters with class colours and level bars. **Ding! +1** when you level |
+| **Availability** | Tick when you can play; the heatmap shows the best overlap |
+| **Events** | Plan a run, sign up with a character and role. Linked to a dungeon, it lists the loot the group needs, with an **Award** button |
+| **Dungeons** | Every Classic dungeon and raid with **all its loot loaded automatically**: stats, boss, drop chance, **which classes it's best for**, and **who in your group it's an upgrade for** |
+| **Character pages** | Gear in every slot (search the real item list), **"Upgrades to look for"** across all dungeons near your level, your Needs, and loot received |
+| **Loot** | Who needs what (with **Need too** and **Looted** buttons) and the full **loot history**, with a count per player to keep things fair |
+| **Discord** | New runs, reminders before a run starts, loot received and level milestones posted to your Discord channel |
 
-Everyone logged in can see everything; you can only edit your own characters, availability and sign-ups (enforced by the database, not just the page).
+Everyone logged in can see everything; you can only change your own characters, gear, availability, sign-ups and Needs. That's enforced by the database, not just the page.
+
+### How "best for" and "upgrade" work
+
+The Classic item list (8,700 items) is in `public/data/classic-items.json`, from the open-source [wow-classic-items](https://github.com/nexus-devs/wow-classic-items) project. `lib/itemScore.js` then:
+
+1. Checks who **can use** an item (armour type and level, weapon skills, class-only items).
+2. Scores it for each class with rough stat weights (e.g. Rogues love Agility, Priests love Intellect and Spirit).
+3. **Best for** = the classes it scores highest for.
+4. **Upgrade** = better than what that character has in the slot (from their character page). Fill your gear in by picking from the search list so the site knows its stats.
+
+It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever is "reimagined", so loot may differ from the original Classic. Use **Add a missing item** on any dungeon page for new items.
 
 ---
 
-## Setup (about 15 minutes)
+## Setup
 
-### 1. Create the database (Supabase)
+### 1. Database (Supabase)
 
-1. Go to [supabase.com](https://supabase.com), sign up and click **New project**. Pick a London/EU region. Save the database password somewhere.
-2. When it's ready, open **SQL Editor → New query**, paste the whole of `supabase/schema.sql`, and click **Run**. You should see "Success".
-   Then do the same with `supabase/schema-2-loot.sql` (dungeons, items, gear, wishlists). Run each file **once** only.
-3. **Authentication → Sign In / Providers → Email**: for a friends-only site the easiest option is to turn **off** "Confirm email", so people can log in straight after signing up. (Leave it on if you prefer, it works either way.)
-4. **Project Settings → API** (or the **Connect** button): copy the **Project URL** and the **anon / publishable key**.
+1. At [supabase.com](https://supabase.com), create a project (London/EU region).
+2. **SQL Editor → New query**: paste and **Run** each file **once**, in order:
+   1. `supabase/schema.sql`
+   2. `supabase/schema-2-loot.sql`
+   3. `supabase/schema-3-auto-loot.sql`
+3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
+4. **Project Settings → API Keys**: copy the **Project URL** and the **publishable / anon** key.
 
-### 2. Run it on your computer
+### 2. Run it locally
 
-You need [Node.js](https://nodejs.org) 20 or newer.
+You need [Node.js](https://nodejs.org) 20+.
 
 ```bash
 cd guild-hub
-cp .env.local.example .env.local     # then paste your URL and key into .env.local
+cp .env.local.example .env.local     # paste your URL and key in
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000, create your account, add a character.
+Open http://localhost:3000.
 
-### 3. Put it online (Vercel)
+### 3. Load the loot list (once)
 
-1. Push the `guild-hub` folder to a new GitHub repository.
-2. Go to [vercel.com](https://vercel.com), sign in with GitHub, **Add New → Project**, pick the repo.
-3. Under **Environment Variables**, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with the same values as your `.env.local`. Click **Deploy**.
-4. Back in Supabase, **Authentication → URL Configuration**: set **Site URL** to your Vercel address (e.g. `https://guild-hub.vercel.app`) so confirmation emails link to the right place.
+Log in, open **Dungeons**, and press **Load Classic loot**. It takes about 30 seconds. Anyone can do it, and it only needs doing once.
 
-Send your friends the link and they can make accounts.
+### 4. Put it online (Vercel)
+
+1. Push the folder to GitHub, then on [vercel.com](https://vercel.com) **Add New → Project** and pick the repo.
+2. Add the environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Deploy**.
+3. In Supabase, **Authentication → URL Configuration**: set **Site URL** to your Vercel address.
+
+### 5. Discord notifications (optional)
+
+1. In Discord: **Server Settings → Integrations → Webhooks → New Webhook**, pick the channel, then **Copy Webhook URL**.
+2. In Supabase **SQL Editor**, run this (with your two URLs):
+
+   ```sql
+   update app_settings set
+     discord_webhook_url = 'https://discord.com/api/webhooks/...',
+     site_url = 'https://your-site.vercel.app';
+   ```
+
+That's it. The webhook URL is stored where the website can't read it, so it stays private.
+
+To turn individual message types off (or change how early the reminder goes out), run any of:
+
+```sql
+update app_settings set notify_events = false;      -- new runs planned
+update app_settings set notify_reminders = false;   -- "starts in 1 hour" reminders
+update app_settings set notify_loot = false;        -- "X got [item]"
+update app_settings set notify_levels = false;      -- "X hit level 40!"
+update app_settings set reminder_minutes = 30;      -- remind 30 min before instead of 60
+```
+
+Level milestones post every 10 levels and at max level. To change that, edit `activity_on_level` in `schema-3-auto-loot.sql`.
 
 ---
 
 ## Customising
 
-- **Site name and icon**: `lib/site.js`. One place, used everywhere.
-- **Dungeon list**: edit on the Dungeons page (or in Supabase → Table Editor → dungeons). The starter list is the original Classic one.
-- **Classes, races, level cap, time slots, gear slots**: all in `lib/wow.js`. If WoW: Forever changes classes or the level cap, edit them there.
-- **Colours and look**: `app/globals.css` (the variables at the top).
+- **Site name and icon**: `lib/site.js`
+- **Classes, races, level cap, time slots, gear slots**: `lib/wow.js`
+- **New class or race colours**: `app/globals.css` (`--class-…` variables, once for dark and once for light)
+- **Stat weights / who items are "for"**: `lib/itemScore.js`
+- **Colours and look**: `app/globals.css`
 
-## Roadmap
+## Ideas for later
 
-- [x] Loot wishlists: each member lists items they want from each dungeon/raid
-- [x] Dungeon loot guide: notable drops per dungeon and which classes want them
 - [ ] Change display name after sign-up
+- [ ] Invite code so only friends can sign up
+- [ ] Recurring raid nights and attendance
+- [ ] Professions directory
 - [ ] Log in with Battle.net / Discord
 - [ ] Auto-sync levels and gear from the Blizzard API (once it supports WoW: Forever)
 - [ ] Raid performance from Warcraft Logs
-- [ ] Invite code so only friends can sign up
 
 ## Project layout
 
 ```
 app/
-  page.js                 Dashboard
-  login/page.js           Login / sign-up
-  roster/page.js          Characters and levels
-  availability/page.js    Weekly availability + group heatmap
-  events/page.js          Event list + create form
-  events/[id]/page.js     One event: group by role, sign up, loot needed
-  dungeons/page.js        Dungeon & raid list
-  dungeons/[id]/page.js   One dungeon: loot by boss, class filter, Want button, add items
-  characters/[id]/page.js One character: gear slots + wishlist
-  loot/page.js            Who needs what, grouped by dungeon
-components/               Shared pieces (nav/login guard, level bar, event card, item name)
-lib/site.js               Site name
-lib/supabase.js           Database connection
-lib/wow.js                Classes, roles, gear slots, item quality etc.
-supabase/schema.sql       Database tables and security rules (run first)
-supabase/schema-2-loot.sql  Loot update (run second)
+  page.js                  Dashboard (runs, levelling race, activity feed)
+  login/page.js            Login / sign-up
+  roster/page.js           Characters and levels
+  availability/page.js     Weekly availability + heatmap
+  events/page.js           Event list + create form
+  events/[id]/page.js      One event: group by role, sign-ups, loot to award
+  dungeons/page.js         Dungeon & raid list (+ Load Classic loot)
+  dungeons/[id]/page.js    One dungeon: for your group, loot by boss, Need / Looted
+  characters/[id]/page.js  One character: upgrades, gear, Needs, loot received
+  loot/page.js             Who needs what
+  loot/history/page.js     Loot history
+components/                Shared pieces (Need button, Looted button, item search, feed…)
+lib/itemScore.js           Who can use an item, who it's best for, is it an upgrade
+lib/wow.js                 Classes, roles, slots, item quality
+lib/site.js                Site name
+public/data/classic-items.json  The Classic item list
+supabase/schema*.sql       Database (run 1, 2, 3 in order)
 ```
