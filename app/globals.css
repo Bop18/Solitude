@@ -224,6 +224,19 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .badge.gold { border-color: transparent; background: var(--accent-soft); color: var(--accent); }
 
+/* ---------- Wishlist priority ---------- */
+.wanters { display: flex; flex-direction: column; gap: 0.25rem; }
+.wanter { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.prio { font-size: 0.72rem; font-weight: 600; padding: 0.05rem 0.45rem; border-radius: 999px; }
+.prio-1 { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.prio-2 { color: var(--accent); background: var(--accent-soft); }
+.prio-3 { color: var(--muted); background: var(--panel-2); }
+.prio-picker { display: inline-flex; align-items: center; gap: 0.35rem; }
+.prio-btn-1 { background: var(--danger); color: var(--on-accent); }
+.prio-btn-1:hover { background: var(--danger); filter: brightness(1.1); }
+.prio-btn-3 { background: transparent; color: var(--text); border-color: var(--border-strong); }
+.prio-btn-3:hover { background: var(--accent-soft); }
+
 /* ---------- Availability grid ---------- */
 .avail { border-collapse: separate; border-spacing: 5px; }
 .avail th, .avail td { border: none; text-align: center; padding: 0; }

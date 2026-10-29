@@ -58,12 +58,15 @@ export default function LootPage() {
                     <td><ItemName item={item} />{wanters.length > 1 && <span className="badge gold" style={{ marginLeft: 6 }}>{wanters.length} want this</span>}</td>
                     <td className="muted">{item.boss ?? '—'}</td>
                     <td>
-                      {wanters.map((w) => (
-                        <div key={w.id}>
-                          <Link href={`/characters/${w.characters.id}`} style={{ color: classColor(w.characters.class) }}>{w.characters.name}</Link>
-                          <span className="muted small"> ({w.characters.profiles?.display_name}) · {PRIORITY[w.priority]} priority</span>
-                        </div>
-                      ))}
+                      <div className="wanters">
+                        {[...wanters].sort((a, b) => a.priority - b.priority).map((w) => (
+                          <span key={w.id} className="wanter">
+                            <Link href={`/characters/${w.characters.id}`} style={{ color: classColor(w.characters.class) }}>{w.characters.name}</Link>
+                            <span className="muted small">{w.characters.profiles?.display_name}</span>
+                            <span className={`prio prio-${w.priority}`}>{PRIORITY[w.priority]}</span>
+                          </span>
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 ))}

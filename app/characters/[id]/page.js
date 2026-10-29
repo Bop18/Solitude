@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
 import LevelBar from '@/components/LevelBar';
-import { GEAR_SLOTS, PRIORITY, ROLES, classColor } from '@/lib/wow';
+import { GEAR_SLOTS, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor } from '@/lib/wow';
 
 export default function CharacterPage() {
   const { id } = useParams();
@@ -21,6 +21,9 @@ export default function CharacterPage() {
   const [allItems, setAllItems] = useState([]);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [editForm, setEditForm] = useState(null); // null = not editing
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
   const load = useCallback(async () => {
     const [c, g, w, it] = await Promise.all([
@@ -87,13 +90,120 @@ export default function CharacterPage() {
   }
 
   const openWishes = wishes.filter((w) => !w.obtained);
+  function startEdit() {
+    setEditForm({
+      name: char.name,
+      realm: char.realm ?? '',
+      class: char.class,
+      race: char.race ?? '',
+      role: char.role ?? 'dps',
+      level: char.level,
+      is_main: char.is_main,
+    });
+  }
+
+  const setField = (field) => (e) =>
+    setEditForm({ ...editForm, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+
+  async function saveEdit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    // Only one main per player
+    if (editForm.is_main && !char.is_main) {
+      await supabase.from('characters').update({ is_main: false }).eq('owner', userId).neq('id', char.id);
+    }
+    const { error } = await supabase
+      .from('characters')
+      .update({
+        name: editForm.name.trim(),
+        realm: editForm.realm.trim() || null,
+        class: editForm.class,
+        race: editForm.race || null,
+        role: editForm.role,
+        level: Math.min(MAX_LEVEL, Math.max(1, Number(editForm.level) || 1)),
+        is_main: editForm.is_main,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', char.id);
+    setSaving(false);
+    if (error) return setError(error.message);
+    setEditForm(null);
+    load();
+  }
+
+  async function deleteCharacter() {
+    if (!confirm(`Delete ${char.name}? Their gear and wishlist will be deleted too.`)) return;
+    const { error } = await supabase.from('characters').delete().eq('id', char.id);
+    if (error) return setError(error.message);
+    router.push('/roster');
+  }
+
   const doneWishes = wishes.filter((w) => w.obtained);
   const filled = GEAR_SLOTS.filter((s) => gear[s]).length;
 
   return (
     <>
       <p><Link href="/roster">← Roster</Link></p>
-      <h1 style={{ color: classColor(char.class) }}>{char.name}</h1>
+      <div className="row spread">
+        <h1 style={{ color: classColor(char.class) }}>{char.name}</h1>
+        {isMine && !editForm && (
+          <button className="btn ghost small" onClick={startEdit}>✎ Edit character</button>
+        )}
+      </div>
+
+      {isMine && editForm && (
+        <form onSubmit={saveEdit} className="panel stack">
+          <h2>Edit character</h2>
+          <div className="form-grid">
+            <div>
+              <label htmlFor="ename">Name</label>
+              <input id="ename" required value={editForm.name} onChange={setField('name')} />
+            </div>
+            <div>
+              <label htmlFor="erealm">Realm</label>
+              <input id="erealm" value={editForm.realm} onChange={setField('realm')} placeholder="Optional" />
+            </div>
+            <div>
+              <label htmlFor="eclass">Class</label>
+              <select id="eclass" value={editForm.class} onChange={setField('class')}>
+                {/* Keep an old class selectable even if it's been removed from the list */}
+                {!CLASS_NAMES.includes(editForm.class) && <option>{editForm.class}</option>}
+                {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="erace">Race</label>
+              <select id="erace" value={editForm.race} onChange={setField('race')}>
+                <option value="">—</option>
+                {editForm.race && !RACES.includes(editForm.race) && <option>{editForm.race}</option>}
+                {RACES.map((r) => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="erole">Role</label>
+              <select id="erole" value={editForm.role} onChange={setField('role')}>
+                {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="elevel">Level</label>
+              <input id="elevel" type="number" min={1} max={MAX_LEVEL} value={editForm.level} onChange={setField('level')} />
+            </div>
+          </div>
+          <label className="checkbox">
+            <input type="checkbox" checked={editForm.is_main} onChange={setField('is_main')} /> This is my main
+          </label>
+          <div className="row spread">
+            <div className="row">
+              <button className="btn" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+              <button className="btn ghost" type="button" onClick={() => setEditForm(null)}>Cancel</button>
+            </div>
+            <button className="btn danger" type="button" onClick={deleteCharacter}>Delete character</button>
+          </div>
+        </form>
+      )}
+
       <p className="muted">
         {char.race ? `${char.race} ` : ''}{char.class}
         {char.role ? ` · ${ROLES[char.role].label}` : ''}

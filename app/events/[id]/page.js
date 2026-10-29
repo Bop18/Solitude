@@ -170,7 +170,7 @@ export default function EventPage() {
                       <td className="muted">{w.items.boss ?? '—'}</td>
                       <td>
                         <Link href={`/characters/${w.characters.id}`} style={{ color: classColor(w.characters.class) }}>{w.characters.name}</Link>
-                        <span className="muted small"> · {PRIORITY[w.priority]}</span>
+                        {' '}<span className={`prio prio-${w.priority}`}>{PRIORITY[w.priority]}</span>
                       </td>
                     </tr>
                   ))}

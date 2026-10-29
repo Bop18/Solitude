@@ -119,7 +119,7 @@ export default function RosterPage() {
               <div key={c.id} className="row spread" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                 <div>
                   <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>{' '}
-                  <span className="muted small">{c.class} · <Link href={`/characters/${c.id}`}>gear &amp; wishlist</Link></span>
+                  <span className="muted small">{c.class} · <Link href={`/characters/${c.id}`}>edit, gear &amp; wishlist</Link></span>
                 </div>
                 <div className="row">
                   <button className="btn ghost small" onClick={() => updateCharacter(c.id, { level: Math.max(1, c.level - 1) })} aria-label="Level down">−</button>
