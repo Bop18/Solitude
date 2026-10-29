@@ -42,6 +42,9 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    2. `supabase/schema-2-loot.sql`
    3. `supabase/schema-3-auto-loot.sql`
    4. `supabase/schema-4-icons.sql`
+   5. `supabase/schema-5-gear-sync.sql`
+
+   (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
 4. **Project Settings → API Keys**: copy the **Project URL** and the **publishable / anon** key.
 
@@ -68,7 +71,36 @@ Log in, open **Dungeons**, and press **Load Classic loot**. It takes about 30 se
 2. Add the environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Deploy**.
 3. In Supabase, **Authentication → URL Configuration**: set **Site URL** to your Vercel address.
 
-### 5. Discord notifications (optional)
+### 5. Sync gear and level from the game (optional, two ways)
+
+Each character page has a **Sync from the game** box. Syncing fills in every gear slot (with icons, item level and stats) and the character's level. Anything on that character's Need list that they're now wearing is ticked off and posted to the feed.
+
+**A. In-game addon (works for any game version)**
+
+1. Copy the `addon/Solitude` folder into your WoW AddOns folder, for example:
+   `C:\Program Files (x86)\World of Warcraft\_classic_era_\Interface\AddOns\Solitude`
+   (the folder name depends on the game version; WoW: Forever's will be its own `_something_` folder).
+2. Start the game. On the character select screen, click **AddOns**, make sure **Solitude** is ticked, and if it says "Out of date" tick **Load out of date AddOns**.
+3. In game, type **/solitude** (or **/sol**). A box appears with the text already selected: press **Ctrl+C**.
+4. On the site, open your character → **Paste from addon** → **Ctrl+V** → **Import gear**.
+
+**B. Battle.net (one click, fully automatic)**
+
+Blizzard's official API. It works today for Classic Era characters. Whether it will cover WoW: Forever isn't known yet; if it does, you only change one setting.
+
+1. Go to [develop.battle.net](https://develop.battle.net/access/clients), log in, **Create Client**. Any name. Redirect URL: your site address. Tick "I do not have a service URL".
+2. Copy the **Client ID** and **Client Secret**.
+3. In Vercel → your project → **Settings → Environment Variables**, add:
+   - `BLIZZARD_CLIENT_ID` = your client ID
+   - `BLIZZARD_CLIENT_SECRET` = your client secret
+   - `BLIZZARD_REGION` = `eu` (or `us`)
+   - `BLIZZARD_NAMESPACE` = `profile-classic1x` for Classic Era. When WoW: Forever launches, change this to its namespace once Blizzard documents it.
+   Then **Redeploy**.
+4. Make sure the character's **Realm** is filled in (Edit character), then press **⟳ Battle.net**.
+
+Blizzard only updates a character's profile when you **log out** in game, so log out (or switch characters) before syncing.
+
+### 6. Discord notifications (optional)
 
 1. In Discord: **Server Settings → Integrations → Webhooks → New Webhook**, pick the channel, then **Copy Webhook URL**.
 2. In Supabase **SQL Editor**, run this (with your two URLs):
@@ -128,7 +160,10 @@ app/
   characters/[id]/page.js  One character: upgrades, gear, Needs, loot received
   loot/page.js             Who needs what
   loot/history/page.js     Loot history
+  api/sync-character/      Battle.net gear sync (runs on the server)
+addon/Solitude/            In-game addon: /solitude exports your gear
 components/                Shared pieces (Need button, Looted button, item search, feed…)
+lib/gearSync.js            Saving synced gear (addon + Battle.net)
 lib/itemScore.js           Who can use an item, who it's best for, is it an upgrade
 lib/wow.js                 Classes, roles, slots, item quality
 lib/site.js                Site name

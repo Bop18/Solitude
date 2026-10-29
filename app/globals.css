@@ -272,6 +272,19 @@ tbody tr:last-child td { border-bottom: none; }
 .import-panel { border-color: var(--accent); background: linear-gradient(135deg, var(--accent-soft), var(--panel)); }
 code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; border-radius: 5px; }
 
+/* ---------- Gear ---------- */
+.gear-table td { vertical-align: top; }
+.gear-item .item-icon { width: 26px; height: 26px; border-radius: 5px; }
+.ilvl {
+  display: inline-block; margin-left: 0.4rem; font-size: 0.72rem; font-weight: 700; color: var(--muted);
+  padding: 0.02rem 0.38rem; border-radius: 6px; border: 1px solid var(--border); vertical-align: middle;
+}
+.ilvl-big { color: var(--text); font-size: 1rem; }
+.sync-box {
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; margin: 0.25rem 0 0.75rem;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
 /* ---------- Activity feed ---------- */
 .feed { display: flex; flex-direction: column; }
 .feed-item { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
@@ -282,6 +295,10 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
 
 /* ---------- Item search ---------- */
 .item-search { position: relative; flex: 1; }
+/* Lift the panel holding an open search above the panels below it,
+   so the dropdown isn't hidden behind them */
+.panel:has(.item-search-results), .group-find:has(.item-search-results) { position: relative; z-index: 30; }
+.item-search-results { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .item-search-results {
   position: absolute; z-index: 20; left: 0; top: calc(100% + 4px); min-width: 100%; width: max-content; max-width: min(460px, 90vw);
   background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);

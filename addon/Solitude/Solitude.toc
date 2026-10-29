@@ -1,0 +1,7 @@
+## Interface: 11507, 11508, 20505, 50500, 50501
+## Title: Solitude
+## Notes: Type /solitude to copy your level and gear to the Solitude website.
+## Author: Solitude
+## Version: 1.0
+
+Solitude.lua

@@ -20,18 +20,33 @@ export default function ItemSearch({ slots, initial = '', onPick, onFreeText, on
       return;
     }
     timer.current = setTimeout(async () => {
-      let query = supabase
-        .from('items')
-        .select('*')
-        .ilike('name', `%${text.replace(/[%_]/g, '')}%`)
-        .order('req_level', { ascending: false, nullsFirst: false })
-        .limit(10);
+      // Match words that START with what you typed ("th" → "Thunderfury", "The Hand",
+      // not every "leaTHer"), searching the whole name only once you've typed 4+ letters.
+      const safe = text.replace(/[%_,()*."\\]/g, '');
+      if (!safe) return setResults([]);
+      let query = supabase.from('items').select('*');
+      query = safe.length >= 4
+        ? query.ilike('name', `%${safe}%`)
+        : query.or(`name.ilike.${safe}%,name.ilike.% ${safe}%`);
       if (slots?.length) query = query.in('slot', slots);
-      const { data } = await query;
-      // Exact / starts-with matches first
-      const lower = text.toLowerCase();
-      const sorted = (data ?? []).sort((a, b) =>
-        (b.name.toLowerCase().startsWith(lower) - a.name.toLowerCase().startsWith(lower)));
+      const { data } = await query.order('req_level', { ascending: false, nullsFirst: false }).limit(40);
+
+      // Best matches first: name starts with it, then a word starts with it, then anything
+      const lower = safe.toLowerCase();
+      const rank = (n) => {
+        const name = n.toLowerCase();
+        if (name === lower) return 0;
+        if (name.startsWith(lower)) return 1;
+        if (name.split(/[\s'-]+/).some((w) => w.startsWith(lower))) return 2;
+        return 3;
+      };
+      const QUALITY_RANK = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
+      const sorted = (data ?? [])
+        .sort((a, b) =>
+          rank(a.name) - rank(b.name) ||
+          (QUALITY_RANK[a.quality] ?? 5) - (QUALITY_RANK[b.quality] ?? 5) ||
+          (b.req_level ?? 0) - (a.req_level ?? 0))
+        .slice(0, 12);
       setResults(sorted);
       setActive(0);
     }, 220);

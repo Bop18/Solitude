@@ -9,6 +9,8 @@ import ItemName from '@/components/ItemName';
 import ItemSearch from '@/components/ItemSearch';
 import WantControl from '@/components/WantControl';
 import LevelBar from '@/components/LevelBar';
+import SyncGear from '@/components/SyncGear';
+import { timeAgo } from '@/components/ActivityFeed';
 import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor } from '@/lib/wow';
 import { upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
 
@@ -180,6 +182,8 @@ export default function CharacterPage() {
 
   const openWishes = wishes.filter((w) => !w.obtained);
   const filled = GEAR_SLOTS.filter((s) => gear[s]).length;
+  const ilvls = GEAR_SLOTS.map((s) => gear[s]?.items?.ilvl).filter(Boolean);
+  const avgIlvl = ilvls.length ? Math.round(ilvls.reduce((a, b) => a + b, 0) / ilvls.length) : null;
   const handTyped = GEAR_SLOTS.filter((s) => gear[s] && !gear[s].items).length;
 
   return (
@@ -283,10 +287,17 @@ export default function CharacterPage() {
         <section className="panel">
           <div className="row spread">
             <h2>Gear</h2>
-            <span className="muted small">{filled}/{GEAR_SLOTS.length} slots</span>
+            <span className="muted small">
+              {avgIlvl ? <><strong className="ilvl-big">{avgIlvl}</strong> avg item level · </> : null}
+              {filled}/{GEAR_SLOTS.length} slots
+            </span>
           </div>
-          {isMine && <p className="muted small">Click Add, start typing, and pick your item from the list so the site knows its stats.</p>}
-          <table>
+          {isMine && <SyncGear character={char} onSynced={load} />}
+          {!isMine && char.synced_at && (
+            <p className="muted small">Synced from the game {timeAgo(char.synced_at)}</p>
+          )}
+          {isMine && <p className="muted small">Or set slots yourself: click Add and pick from the list so the site knows the stats.</p>}
+          <table className="gear-table">
             <tbody>
               {GEAR_SLOTS.map((slot) => {
                 const row = gear[slot];
@@ -306,10 +317,12 @@ export default function CharacterPage() {
                           <button className="btn ghost small" onClick={() => setEditingSlot(null)} aria-label="Cancel">✕</button>
                         </div>
                       ) : row ? (
-                        <>
+                        <div className="gear-item">
                           <ItemName item={row.items ?? { name: row.item_name, quality: 'common' }} />
+                          {row.items?.ilvl ? <span className="ilvl" title="Item level">{row.items.ilvl}</span> : null}
                           {!row.items && <span className="muted small" title="Typed by hand, so its stats aren't known"> ?</span>}
-                        </>
+                          {row.items && statSummary(row.items) && <div className="stat-line">{statSummary(row.items)}</div>}
+                        </div>
                       ) : (
                         <span className="muted">—</span>
                       )}
