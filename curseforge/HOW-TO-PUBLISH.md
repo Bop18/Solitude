@@ -7,7 +7,7 @@
    Category: Raid (and/or Guild). Licence: MIT.
 4. Avatar: upload `icon.png` from this folder.
 5. Description: paste the contents of `description.md`.
-6. **Upload File** → choose `Solitude-2.0.0.zip` from this folder.
+6. **Upload File** → choose `Solitude-2.0.1.zip` from this folder.
    - Release type: Release
    - Game versions: tick the Classic versions your group plays (and WoW: Forever when it's listed)
    - Changelog: paste the 2.0.0 section from `CHANGELOG.md`

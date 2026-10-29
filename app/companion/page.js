@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { CURSEFORGE_URL, CURSEFORGE_NAME } from '@/lib/site';
 
 // Setup guide for automatic tracking (addon + companion).
 export default function CompanionPage() {
@@ -33,12 +34,21 @@ export default function CompanionPage() {
           <h2>Set it up (5 minutes)</h2>
           <ol className="steps">
             <li>
-              <strong>Install the Solitude addon</strong>
+              <strong>Install the Solitude addon from CurseForge</strong>
               <p className="muted small">
-                Search <em>Solitude</em> in the CurseForge app, or <a href="/downloads/Solitude-addon.zip" download>download it here</a> and
-                unzip the <code>Solitude</code> folder into <code>World of Warcraft\_classic_era_\Interface\AddOns</code> (or your game version&apos;s folder).
-                If the game says it&apos;s out of date, tick <em>Load out of date AddOns</em>.
+                Open the <a href="https://www.curseforge.com/download/app" target="_blank" rel="noreferrer">CurseForge app</a>, go to
+                World of Warcraft → WoW: Forever, search <em>{CURSEFORGE_NAME}</em> and click <strong>Install</strong>.
+                CurseForge keeps it updated for you.
               </p>
+              {CURSEFORGE_URL ? (
+                <a className="btn small" href={CURSEFORGE_URL} target="_blank" rel="noreferrer">Open on CurseForge ↗</a>
+              ) : (
+                <p className="muted small">
+                  Not on CurseForge yet? <a href="/downloads/Solitude-addon.zip" download>Download it here</a> for now and unzip the{' '}
+                  <code>Solitude</code> folder into your WoW <code>Interface\AddOns</code> folder.
+                </p>
+              )}
+              <p className="muted small">If the game says it&apos;s out of date, tick <em>Load out of date AddOns</em> on the AddOns screen.</p>
             </li>
             <li>
               <strong>Make a folder for the companion</strong>
@@ -72,7 +82,7 @@ export default function CompanionPage() {
           <section className="panel">
             <h2>How it works</h2>
             <ul className="muted small" style={{ paddingLeft: '1.1rem', margin: 0 }}>
-              <li>While you play, the addon notes boss kills (and who was there), your raid lockouts, level and gear.</li>
+              <li>The Solitude addon (from CurseForge) notes boss kills (and who was there), your raid lockouts, level and gear while you play.</li>
               <li>WoW saves that when you <strong>log out</strong> or type <strong>/reload</strong>.</li>
               <li>The companion sees the save and uploads it within a few seconds.</li>
               <li>Two people uploading the same kill is fine: it&apos;s only counted once.</li>

@@ -383,3 +383,26 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
 .leaderboard td:nth-child(2), .leaderboard th:nth-child(2) { text-align: left; }
 .leaderboard .rank { width: 3rem; font-weight: 600; color: var(--muted); }
 .leaderboard td.top { color: var(--accent); font-weight: 700; }
+
+/* ---------- Hourly availability ---------- */
+.hours-grid { display: grid; grid-template-columns: 3.2rem repeat(7, 1fr); gap: 3px; user-select: none; }
+.hours-grid.editable { touch-action: none; cursor: pointer; }
+.hg-row { display: contents; }
+.hg-corner { }
+.hg-day { text-align: center; font-size: 0.78rem; color: var(--muted); font-weight: 600; padding-bottom: 0.2rem; }
+.hg-hour { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; }
+.hg-cell {
+  height: 24px; border-radius: 5px; background: var(--bg-sunken); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 0.72rem; font-weight: 700;
+  transition: background 0.08s;
+}
+.hours-grid.editable .hg-cell:hover { border-color: var(--accent); }
+.hg-cell.on { background: var(--accent); border-color: var(--accent); }
+.hg-cell.hovered { outline: 2px solid var(--text); outline-offset: -1px; }
+/* A faint line at midnight */
+.hg-row:nth-child(n) .hg-hour:empty { }
+.ready-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--ok); box-shadow: 0 0 6px var(--ok); display: inline-block; }
+.ready-dot.inline { vertical-align: middle; margin: 0 2px; }
+.hover-info { margin-top: 0.75rem; min-height: 1.5rem; font-size: 0.9rem; }
+.best-blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+.best-block { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 0.9rem; }

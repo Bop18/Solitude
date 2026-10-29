@@ -10,7 +10,7 @@ A members-only site for our WoW group: track characters, levels and gear, see wh
 |---|---|
 | **Dashboard** | Next runs, the levelling race, and an **activity feed** ("Roob hit level 40!", "Bop got [Cruel Barb]") |
 | **Roster** | Everyone's characters with class colours and level bars. **Ding! +1** when you level |
-| **Availability** | Tick when you can play; the heatmap shows the best overlap |
+| **Availability** | Paint the hours you can play (click and drag). The group grid shows overlap and when you have a tank + healer + 5; best times come with a one-click **Plan a run** |
 | **Events** | Plan a run, sign up with a character and role. Linked to a dungeon, it lists the loot the group needs, with an **Award** button |
 | **Dungeons** | Every Classic dungeon and raid with **all its loot loaded automatically**: stats, boss, drop chance, **which classes it's best for**, and **who in your group it's an upgrade for** |
 | **Character pages** | Gear in every slot (search the real item list), **"Upgrades to look for"** across all dungeons near your level, your Needs, and loot received |
@@ -45,6 +45,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    4. `supabase/schema-4-icons.sql`
    5. `supabase/schema-5-gear-sync.sql`
    6. `supabase/schema-6-progress.sql`
+   7. `supabase/schema-7-availability.sql`
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).

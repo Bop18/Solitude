@@ -280,7 +280,7 @@ function findSaveFiles(wowFolder) {
 async function setup(cfg) {
   if (!cfg.supabaseUrl || !cfg.anonKey) {
     console.log('\nThis folder is missing solitude-config.json.');
-    console.log('On the Solitude website, open Progress → "Set it up" (the /companion page) and download it into this folder.');
+    console.log('On the Solitude website, open Progress → "Setup guide" (the /companion page) and download it into this folder.');
     process.exit(1);
   }
   if (!cfg.wowFolder || !fs.existsSync(cfg.wowFolder)) {

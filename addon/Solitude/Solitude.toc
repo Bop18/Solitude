@@ -1,8 +1,8 @@
-## Interface: 11507, 11508, 20505, 50500, 50501
+## Interface: 16001, 11507, 11508, 20505, 50500, 50501
 ## Title: Solitude
 ## Notes: Tracks your boss kills, raid lockouts, level and gear for your group's Solitude website.
 ## Author: Solitude
-## Version: 2.0.0
+## Version: 2.0.1
 ## SavedVariables: SolitudeDB
 ## X-Category: Raid
 ## X-License: MIT

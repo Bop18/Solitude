@@ -7,6 +7,7 @@ import RaidProgress from '@/components/RaidProgress';
 import { timeAgo } from '@/components/ActivityFeed';
 import { buildRuns, weeklyRaidProgress, lastReset, nextReset, playerStats } from '@/lib/progress';
 import { classColor } from '@/lib/wow';
+import { CURSEFORGE_URL, CURSEFORGE_NAME } from '@/lib/site';
 
 function untilText(date) {
   const ms = date - Date.now();
@@ -110,8 +111,8 @@ export default function ProgressPage() {
           <h2>Recent runs</h2>
           {loaded && runs.length === 0 && (
             <p className="muted">
-              Nothing tracked yet. Runs appear here automatically once someone in the group has the Solitude addon and companion
-              (<Link href="/companion">set it up</Link>), or when bosses are ticked off on an event page.
+              Nothing tracked yet. Runs appear here automatically once someone in the group has the {CURSEFORGE_NAME} addon
+              from CurseForge plus the companion (<Link href="/companion">setup guide</Link>), or when bosses are ticked off on an event page.
             </p>
           )}
           <div className="run-list">
@@ -163,11 +164,15 @@ export default function ProgressPage() {
 
           <section className="panel">
             <h2>How tracking works</h2>
-            <p className="muted small" style={{ margin: 0 }}>
-              The Solitude addon records boss kills while you play; the companion app uploads them when you log out.
-              Only one person in each group needs it. {lastUpload && <>Last kill recorded {timeAgo(lastUpload)}.</>}{' '}
-              <Link href="/companion">Set it up →</Link>
+            <p className="muted small" style={{ marginTop: 0 }}>
+              Install the <strong>{CURSEFORGE_NAME}</strong> addon from CurseForge. It records boss kills while you play,
+              and the Solitude companion uploads them when you log out. Only one person in each group needs it.
+              {lastUpload && <> Last kill recorded {timeAgo(lastUpload)}.</>}
             </p>
+            <div className="row">
+              {CURSEFORGE_URL && <a className="btn small" href={CURSEFORGE_URL} target="_blank" rel="noreferrer">Get the addon ↗</a>}
+              <Link href="/companion" className="btn ghost small">Setup guide</Link>
+            </div>
           </section>
         </div>
       </div>
