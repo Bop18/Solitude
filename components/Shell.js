@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { SITE_NAME, SITE_ICON } from '@/lib/site';
+import ThemeToggle from './ThemeToggle';
 
 const LINKS = [
   { href: '/', label: 'Dashboard' },
@@ -30,7 +31,14 @@ export default function Shell({ children }) {
     if (!loading && session && pathname === '/login') router.replace('/');
   }, [loading, session, isPublic, pathname, router]);
 
-  if (isPublic) return <main className="container narrow">{children}</main>;
+  if (isPublic) {
+    return (
+      <>
+        <ThemeToggle className="floating-toggle" />
+        <main className="container narrow">{children}</main>
+      </>
+    );
+  }
 
   if (loading || !session) {
     return <main className="container"><p className="muted">Loading…</p></main>;
@@ -40,7 +48,7 @@ export default function Shell({ children }) {
     <>
       <header className="topbar">
         <div className="container topbar-inner">
-          <Link href="/" className="brand">{SITE_ICON} {SITE_NAME}</Link>
+          <Link href="/" className="brand"><span className="brand-icon">{SITE_ICON}</span>{SITE_NAME}</Link>
           <nav className="nav">
             {LINKS.map((link) => (
               <Link
@@ -53,7 +61,8 @@ export default function Shell({ children }) {
             ))}
           </nav>
           <div className="user">
-            <span className="muted">{profile?.display_name ?? session.user.email}</span>
+            <span className="muted small">{profile?.display_name ?? session.user.email}</span>
+            <ThemeToggle />
             <button className="btn ghost small" onClick={() => supabase.auth.signOut()}>Log out</button>
           </div>
         </div>

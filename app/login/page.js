@@ -39,7 +39,7 @@ export default function LoginPage() {
 
   return (
     <div className="panel">
-      <h1>{SITE_ICON} {SITE_NAME}</h1>
+      <h1><span className="brand-icon">{SITE_ICON}</span> {SITE_NAME}</h1>
       <p className="muted">{mode === 'login' ? 'Log in to see the roster and sign up for runs.' : 'Create your member account.'}</p>
 
       <form onSubmit={handleSubmit} className="stack">

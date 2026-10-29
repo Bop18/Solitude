@@ -6,7 +6,7 @@ export default function LevelBar({ level, className }) {
     <div className="level" title={`Level ${level} / ${MAX_LEVEL}`}>
       <strong style={{ minWidth: '1.6rem' }}>{level}</strong>
       <div className="level-bar">
-        <div className="level-fill" style={{ width: `${pct}%`, background: classColor(className) }} />
+        <div className="level-fill" style={{ width: `${pct}%`, background: classColor(className), color: classColor(className) }} />
       </div>
     </div>
   );

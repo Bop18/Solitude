@@ -1,4 +1,4 @@
-# ⚔ Guild Hub
+# ☾ Solitude
 
 A members-only site for our WoW group: track characters and levels, mark when you're free, and organise dungeon/raid runs with sign-ups.
 

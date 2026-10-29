@@ -112,7 +112,10 @@ export default function AvailabilityPage() {
                           <div
                             className="heat"
                             title={names.length ? names.join(', ') : 'Nobody yet'}
-                            style={{ background: `rgba(224, 180, 76, ${0.08 + strength * 0.8})`, color: strength > 0.5 ? '#1a1408' : 'var(--text)' }}
+                            style={{
+                              background: `color-mix(in srgb, var(--accent) ${Math.round(6 + strength * 84)}%, var(--bg-sunken))`,
+                              color: strength > 0.5 ? 'var(--on-accent)' : 'var(--text)',
+                            }}
                           >
                             {names.length || ''}
                           </div>
