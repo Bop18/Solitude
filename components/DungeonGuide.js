@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import ImportGuides from './ImportGuides';
 
 // "New to this dungeon?" overview: where it is, what to grab first, the route and tips.
 export default function DungeonGuide({ dungeonId, compact = false }) {
@@ -11,7 +12,16 @@ export default function DungeonGuide({ dungeonId, compact = false }) {
     supabase.from('dungeons').select('*').eq('id', dungeonId).maybeSingle().then(({ data }) => setD(data));
   }, [dungeonId]);
 
-  if (!d || !(d.guide_overview || d.guide_where)) return null;
+  if (!d) return null;
+  if (!(d.guide_overview || d.guide_where)) {
+    if (compact || !('guide_overview' in d)) return null;
+    return (
+      <section className="panel">
+        <p className="muted" style={{ marginTop: 0 }}>No starter guide here yet. Load the ready-made guides for every Classic dungeon and raid:</p>
+        <ImportGuides compact onDone={() => window.location.reload()} />
+      </section>
+    );
+  }
   const route = Array.isArray(d.guide_route) ? d.guide_route : [];
 
   return (

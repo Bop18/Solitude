@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import ImportItems from '@/components/ImportItems';
+import ImportGuides from '@/components/ImportGuides';
 
 export default function DungeonsPage() {
   const { session } = useAuth();
@@ -15,6 +16,7 @@ export default function DungeonsPage() {
   const [form, setForm] = useState({ name: '', kind: 'dungeon', min_level: '', max_level: '', size: 5 });
   const [error, setError] = useState('');
   const [hasGameData, setHasGameData] = useState(true); // null = database not updated yet
+  const [needsGuides, setNeedsGuides] = useState(false);
 
   const load = useCallback(async () => {
     const [d, w, c, gd] = await Promise.all([
@@ -26,13 +28,16 @@ export default function DungeonsPage() {
     const err = d.error || w.error || c.error;
     if (err) return setError(err.message);
     setHasGameData(gd.error ? null : (gd.count ?? 0) > 0);
+    // Starter guides loaded yet? (hidden if the database doesn't have the guide columns yet)
+    const gq = await supabase.from('dungeons').select('id', { count: 'exact', head: true }).not('guide_overview', 'is', null);
+    setNeedsGuides(!gq.error && (gq.count ?? 0) === 0);
 
     const wanted = {};
     for (const row of w.data) {
       const id = row.items?.dungeon_id;
       if (id) wanted[id] = (wanted[id] ?? 0) + 1;
     }
-    setDungeons(d.data.map((dg) => ({ ...dg, itemCount: dg.items.length, wantedCount: wanted[dg.id] ?? 0 })));
+    setDungeons(d.data.map((dg) => ({ ...dg, itemCount: (dg.items ?? []).length, wantedCount: wanted[dg.id] ?? 0 })));
 
     const main = c.data.find((ch) => ch.is_main) ?? c.data.sort((a, b) => b.level - a.level)[0];
     setMyLevel(main?.level ?? null);
@@ -94,6 +99,7 @@ export default function DungeonsPage() {
       <p className="muted">Open a dungeon to see every drop, who it&apos;s best for, and what&apos;s an upgrade for your group.</p>
       {error && <p className="error">{error}</p>}
       {hasGameData === false && <ImportItems onDone={load} />}
+      {needsGuides && <ImportGuides onDone={load} />}
       {hasGameData === null && (
         <section className="panel"><p className="muted">To get the automatic loot list, run <code>supabase/schema-3-auto-loot.sql</code> in Supabase first.</p></section>
       )}

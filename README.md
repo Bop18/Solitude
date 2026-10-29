@@ -48,7 +48,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    6. `supabase/schema-6-progress.sql`
    7. `supabase/schema-7-availability.sql`
    8. `supabase/schema-8-tactics-routes.sql`
-   9. `supabase/schema-9-starter-guides.sql` (beginner guides for every Classic dungeon and raid)
+   9. `supabase/schema-9-starter-guides.sql`, then on the site go to **Dungeons → Load starter guides**
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -67,9 +67,9 @@ npm run dev
 
 Open http://localhost:3000.
 
-### 3. Load the loot list (once)
+### 3. Load the loot list and guides (once)
 
-Log in, open **Dungeons**, and press **Load Classic loot**. It takes about 30 seconds. Anyone can do it, and it only needs doing once.
+Log in, open **Dungeons**, and press **Load Classic loot**, then **Load starter guides**. It takes about 30 seconds. Anyone can do it, and it only needs doing once.
 
 ### 4. Put it online (Vercel)
 
