@@ -8,6 +8,8 @@ import { useAuth } from '@/components/AuthProvider';
 import { formatWhen } from '@/components/EventCard';
 import ItemName from '@/components/ItemName';
 import EventBosses from '@/components/EventBosses';
+import RouteEditor from '@/components/RouteEditor';
+import BossTactics from '@/components/BossTactics';
 import { ROLES, EVENT_KINDS, PRIORITY, classColor } from '@/lib/wow';
 
 const STATUSES = { going: 'Going', maybe: 'Maybe', not_going: "Can't make it" };
@@ -147,7 +149,7 @@ export default function EventPage() {
             const list = going.filter((s) => s.role === role);
             return (
               <div key={role} className="role-col">
-                <h3>{r.icon} {r.label}s ({list.length})</h3>
+                <h3>{r.icon} {role === 'dps' ? 'DPS' : `${r.label}s`} ({list.length})</h3>
                 {list.length === 0 ? <p className="muted small">None yet</p> : list.map((s) => <SignupLine key={s.user_id} s={s} />)}
               </div>
             );
@@ -160,6 +162,22 @@ export default function EventPage() {
           </div>
         )}
       </section>
+
+      {event.dungeon_id && (
+        <section className="panel">
+          <div className="row spread">
+            <h2>Before you go</h2>
+            <div className="row">
+              <Link href={`/dungeons/${event.dungeon_id}#routes`} className="small">All routes →</Link>
+              <Link href={`/dungeons/${event.dungeon_id}#tactics`} className="small">Edit tactics →</Link>
+            </div>
+          </div>
+          <h3 className="sub-head">Tank route</h3>
+          <RouteEditor dungeonId={event.dungeon_id} userId={userId} readOnly onlyDefault />
+          <h3 className="sub-head">Boss tactics</h3>
+          <BossTactics dungeonId={event.dungeon_id} compact />
+        </section>
+      )}
 
       {event.dungeon_id && <EventBosses event={event} signups={signups} userId={userId} />}
 

@@ -9,6 +9,8 @@ import ItemName from '@/components/ItemName';
 import WantControl from '@/components/WantControl';
 import RecordLoot from '@/components/RecordLoot';
 import ImportItems from '@/components/ImportItems';
+import BossTactics from '@/components/BossTactics';
+import RouteEditor from '@/components/RouteEditor';
 import { CLASS_NAMES, ITEM_SLOTS, QUALITY, PRIORITY, classColor } from '@/lib/wow';
 import { bestFor, upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
 
@@ -39,6 +41,17 @@ export default function DungeonPage() {
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [hasGameData, setHasGameData] = useState(true);
+  const [tab, setTab] = useState('loot'); // 'loot' | 'tactics' | 'routes'
+
+  // Open a tab straight from a link, e.g. /dungeons/3#routes
+  useEffect(() => {
+    const fromHash = window.location.hash.replace('#', '');
+    if (['loot', 'tactics', 'routes'].includes(fromHash)) setTab(fromHash);
+  }, []);
+  function switchTab(t) {
+    setTab(t);
+    window.history.replaceState(null, '', `#${t}`);
+  }
 
   const load = useCallback(async () => {
     const [d, it, ch, gd] = await Promise.all([
@@ -186,6 +199,17 @@ export default function DungeonPage() {
       </p>
       {error && <p className="error">{error}</p>}
 
+      <nav className="tabs">
+        <a href="#loot" className={tab === 'loot' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('loot'); }}>Loot</a>
+        <a href="#tactics" className={tab === 'tactics' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('tactics'); }}>Boss tactics</a>
+        <a href="#routes" className={tab === 'routes' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('routes'); }}>Tank routes</a>
+      </nav>
+
+      {tab === 'tactics' && <BossTactics dungeonId={Number(id)} />}
+      {tab === 'routes' && <RouteEditor dungeonId={Number(id)} userId={userId} />}
+
+      {tab === 'loot' && (
+        <>
       {!hasGameData && <ImportItems onDone={load} />}
 
       {/* ---------- For your group ---------- */}
@@ -390,6 +414,8 @@ export default function DungeonPage() {
           </form>
         )}
       </section>
+        </>
+      )}
     </>
   );
 }
