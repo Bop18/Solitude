@@ -377,3 +377,9 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ---------- Leaderboard ---------- */
+.leaderboard td, .leaderboard th { text-align: center; }
+.leaderboard td:nth-child(2), .leaderboard th:nth-child(2) { text-align: left; }
+.leaderboard .rank { width: 3rem; font-weight: 600; color: var(--muted); }
+.leaderboard td.top { color: var(--accent); font-weight: 700; }

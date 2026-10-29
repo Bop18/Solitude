@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import useProgressData from '@/lib/useProgressData';
 import RaidProgress from '@/components/RaidProgress';
 import { timeAgo } from '@/components/ActivityFeed';
-import { buildRuns, weeklyRaidProgress, lastReset, nextReset, runsPerPlayer } from '@/lib/progress';
+import { buildRuns, weeklyRaidProgress, lastReset, nextReset, playerStats } from '@/lib/progress';
 import { classColor } from '@/lib/wow';
 
 function untilText(date) {
@@ -16,6 +17,7 @@ function untilText(date) {
 
 export default function ProgressPage() {
   const { dungeons, kills, lockouts, characters, bossesByDungeon, error, loaded } = useProgressData();
+  const [period, setPeriod] = useState('all'); // 'week' | 'all'
 
   const dungeonById = Object.fromEntries(dungeons.map((d) => [d.id, d]));
   const charById = Object.fromEntries(characters.map((c) => [c.id, c]));
@@ -27,9 +29,10 @@ export default function ProgressPage() {
   const started = raids.filter((r) => r.killed > 0);
   const notStarted = raids.filter((r) => r.killed === 0);
 
-  const perPlayer = runsPerPlayer(runs, characters);
   const players = Object.fromEntries(characters.map((c) => [c.owner, c.profiles?.display_name ?? '?']));
-  const leaderboard = Object.entries(perPlayer).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const kindOf = (id) => dungeonById[id]?.kind;
+  const leaderboard = playerStats(runs, characters, kindOf, { since: period === 'week' ? weekStart : null });
+  const best = (key) => Math.max(0, ...leaderboard.map((p) => p[key]));
 
   const perDungeon = {};
   for (const r of runs) if (r.dungeonId) perDungeon[r.dungeonId] = (perDungeon[r.dungeonId] ?? 0) + 1;
@@ -64,6 +67,41 @@ export default function ProgressPage() {
         {notStarted.length > 0 && (
           <p className="muted small" style={{ marginTop: '0.9rem' }}>Not started: {notStarted.map((r) => r.dungeon.name).join(', ')}</p>
         )}
+      </section>
+
+      {/* ---------- Leaderboard ---------- */}
+      <section className="panel">
+        <div className="row spread">
+          <h2>Leaderboard</h2>
+          <div className="tabs" style={{ margin: 0 }}>
+            <a href="#" className={period === 'week' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setPeriod('week'); }}>This week</a>
+            <a href="#" className={period === 'all' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setPeriod('all'); }}>All time</a>
+          </div>
+        </div>
+        {leaderboard.length === 0 ? (
+          <p className="muted">{period === 'week' ? 'No runs yet this week.' : 'No runs tracked yet.'}</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="leaderboard">
+              <thead>
+                <tr><th>#</th><th>Player</th><th>Dungeons</th><th>Raids</th><th>Full clears</th><th>Bosses killed</th></tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((p, i) => (
+                  <tr key={p.owner}>
+                    <td className="rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+                    <td><strong>{players[p.owner] ?? '?'}</strong></td>
+                    <td className={p.dungeons && p.dungeons === best('dungeons') ? 'top' : ''}>{p.dungeons}</td>
+                    <td className={p.raids && p.raids === best('raids') ? 'top' : ''}>{p.raids}</td>
+                    <td className={p.fullClears && p.fullClears === best('fullClears') ? 'top' : ''}>{p.fullClears}</td>
+                    <td className={p.bosses && p.bosses === best('bosses') ? 'top' : ''}>{p.bosses}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="muted small" style={{ margin: '0.6rem 0 0' }}>Counts every run any of your characters was in. Highlighted = most in the group.</p>
       </section>
 
       <div className="grid-2">
@@ -108,21 +146,6 @@ export default function ProgressPage() {
         </section>
 
         <div className="stack-panels">
-          {/* ---------- Leaderboard ---------- */}
-          <section className="panel">
-            <h2>Most active</h2>
-            {leaderboard.length === 0 ? <p className="muted">No runs yet.</p> : (
-              <div className="stack">
-                {leaderboard.map(([owner, n], i) => (
-                  <div key={owner} className="row spread">
-                    <span><span className="muted" style={{ display: 'inline-block', width: '1.5rem' }}>{i + 1}.</span>{players[owner] ?? '?'}</span>
-                    <span className="badge">{n} run{n === 1 ? '' : 's'}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
           {/* ---------- Per dungeon ---------- */}
           <section className="panel">
             <h2>Most run</h2>
