@@ -21,6 +21,43 @@ const json = (body, status = 200) => Response.json(body, { status });
 // (Retail, plain "profile", is left out on purpose so a same-named retail character can't be picked up.)
 const NAMESPACE_GUESSES = ['profile-forever', 'profile-classic-forever', 'profile-classic1x', 'profile-classic', 'profile-classic-ann'];
 const workingNamespace = {}; // region → namespace that last found a character
+const realmCache = {};       // "ns-region" → [{ slug, name }] (null if that game version doesn't exist)
+
+/** Every realm (or WoW: Forever ruleset server) Blizzard lists for a game version. */
+async function realmsFor(ns, region, headers) {
+  const key = `${ns}-${region}`;
+  if (key in realmCache) return realmCache[key];
+  const dynamic = ns.replace(/^profile/, 'dynamic');
+  const res = await fetch(`https://${region}.api.blizzard.com/data/wow/realm/index?namespace=${dynamic}-${region}&locale=en_GB`, { headers, cache: 'no-store' });
+  const list = res.ok ? ((await res.json()).realms ?? []).map((r) => ({ slug: r.slug, name: typeof r.name === 'string' ? r.name : r.name?.en_GB ?? r.name?.en_US ?? r.slug })) : null;
+  realmCache[key] = list;
+  return list;
+}
+
+/**
+ * Which realm slugs to try for what the player typed ("Normal", "PvP", "Pyrewood Village").
+ * Exact matches first, then realms whose name contains the word, then the typed text as-is.
+ */
+function realmCandidates(typed, realms) {
+  const want = realmSlug(typed);
+  const out = [];
+  if (realms?.length) {
+    const norm = (x) => realmSlug(x);
+    for (const r of realms) if (r.slug === want || norm(r.name) === want) out.push(r.slug);
+    for (const r of realms) if (!out.includes(r.slug) && (r.slug.split('-').includes(want) || norm(r.name).split('-').includes(want))) out.push(r.slug);
+    // WoW: Forever might list just one server per ruleset with an unexpected name: if there's only one, try it
+    if (!out.length && realms.length === 1) out.push(realms[0].slug);
+  }
+  if (!out.includes(want)) out.push(want);
+  return out.slice(0, 3);
+}
+
+/** Name spellings to try: "shiv", then with the WoW: Forever surname in a few forms. */
+function nameCandidates(name, surname) {
+  const first = name.trim().toLowerCase();
+  const last = surname?.trim().toLowerCase();
+  return last ? [first, `${first}-${last}`, `${first}${last}`, `${first} ${last}`] : [first];
+}
 
 let cachedToken = null; // { token, expires }
 
@@ -68,10 +105,9 @@ export async function POST(request) {
   const { data: character } = await supabase.from('characters').select('*').eq('id', characterId).maybeSingle();
   if (!character) return json({ error: 'Character not found.' }, 404);
   if (character.owner !== userId) return json({ error: 'You can only sync your own characters.' }, 403);
-  if (!character.realm) return json({ error: 'Add your realm to this character first (Edit character → Realm).' }, 400);
+  if (!character.realm) return json({ error: 'Pick your ruleset (Normal, PvP…) on this character first: Edit character → Ruleset.' }, 400);
 
   const region = (process.env.BLIZZARD_REGION || 'eu').toLowerCase();
-  const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realmSlug(character.realm))}/${encodeURIComponent(character.name.toLowerCase())}`;
   const forced = process.env.BLIZZARD_NAMESPACE?.trim();
   const tryList = forced
     ? [forced]
@@ -81,19 +117,28 @@ export async function POST(request) {
     const bnet = await blizzardToken();
     const headers = { Authorization: `Bearer ${bnet}` };
     let profileRes, equipRes, used = null, lastStatus = 404;
+    const tried = [];
+    search:
     for (const ns of tryList) {
+      const realms = await realmsFor(ns, region, headers);
       const query = `?namespace=${ns}-${region}&locale=en_GB`;
-      [profileRes, equipRes] = await Promise.all([
-        fetch(base + query, { headers, cache: 'no-store' }),
-        fetch(base + '/equipment' + query, { headers, cache: 'no-store' }),
-      ]);
-      if (profileRes.ok && equipRes.ok) { used = ns; break; }
-      lastStatus = profileRes.ok ? equipRes.status : profileRes.status;
+      for (const realm of realmCandidates(character.realm, realms)) {
+        for (const who of nameCandidates(character.name, character.surname)) {
+          const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realm)}/${encodeURIComponent(who)}`;
+          tried.push(`${ns}/${realm}/${who}`);
+          profileRes = await fetch(base + query, { headers, cache: 'no-store' });
+          if (!profileRes.ok) { lastStatus = profileRes.status; continue; }
+          equipRes = await fetch(base + '/equipment' + query, { headers, cache: 'no-store' });
+          if (equipRes.ok) { used = ns; break search; }
+          lastStatus = equipRes.status;
+        }
+      }
     }
 
     if (!used && lastStatus === 404) {
       return json({
-        error: `Blizzard couldn't find ${character.name} on ${character.realm} (${region.toUpperCase()}). Check the name and realm spelling, and log out of the character once in game. Blizzard only updates profiles when you log out.`,
+        error: `Blizzard couldn't find ${character.name}${character.surname ? ' ' + character.surname : ''} on ${character.realm} (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once in game. Blizzard only updates profiles when you log out.`,
+        tried: tried.slice(0, 20),
       }, 404);
     }
     if (!used) {

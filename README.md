@@ -50,6 +50,8 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    7. `supabase/schema-7-availability.sql`
    8. `supabase/schema-8-tactics-routes.sql`
    9. `supabase/schema-9-starter-guides.sql`, then on the site go to **Dungeons → Load starter guides**
+   10. `supabase/schema-10-forever.sql` (surnames, and WoW: Forever's rulesets instead of realms)
+   11. `supabase/schema-11-speed.sql` (indexes that keep the site fast as it fills up)
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -115,7 +117,9 @@ Blizzard's official API. It works today for Classic Era characters. Whether it w
    - `BLIZZARD_REGION` = `eu` (or `us`)
    - `BLIZZARD_NAMESPACE`: **leave this out.** The site tries the likely WoW: Forever / Classic namespaces and remembers which one works. Only set it to force one (e.g. `profile-classic1x` for Classic Era).
 
-   Once this is set up, everyone's characters **sync themselves** when they open the site (if they're more than 3 hours old and have a realm filled in). The Sync button still works for an instant refresh.
+   WoW: Forever has no realms, so on each character pick the **Ruleset** (Normal, PvP, RP, RP-PvP, Hardcore) and fill in the **Surname**. The site works out which Blizzard server and name spelling to use.
+
+   Once this is set up, everyone's characters **sync themselves** when they open the site (if they're more than 3 hours old and have a ruleset filled in). The Sync button still works for an instant refresh.
    Then **Redeploy**.
 4. Make sure the character's **Realm** is filled in (Edit character), then press **⟳ Battle.net**.
 

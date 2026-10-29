@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthProvider';
 import { classColor } from '@/lib/wow';
-import { itemsForLevels, mainsByOwner, rankDungeons } from '@/lib/suggest';
+import { itemsForLevels, loadDungeons, mainsByOwner, rankDungeons } from '@/lib/suggest';
 import ItemName from './ItemName';
 
 // Dashboard: a short, personal to-do list. Everything links to where you fix it.
@@ -31,7 +31,7 @@ export default function NextSteps() {
         supabase.from('characters').select('id, name, class, level, role, owner, is_main, synced_at, character_gear(slot, item_name, items(*)), wishlist(id, obtained)').eq('owner', userId).then((r) => r.data ?? []),
         supabase.from('events').select('id, title, starts_at, event_signups(user_id, status)').gte('starts_at', new Date().toISOString()).lte('starts_at', soon).order('starts_at').then((r) => r.data ?? []),
         supabase.from('availability_hours').select('day', { count: 'exact', head: true }).eq('user_id', userId).then((r) => r.count ?? 0, () => 0),
-        supabase.from('dungeons').select('*').then((r) => r.data ?? []),
+        loadDungeons(),
       ]);
 
       const out = [];

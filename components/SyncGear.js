@@ -72,7 +72,7 @@ export default function SyncGear({ character, onSynced }) {
           </div>
         </div>
         <div className="row">
-          <button className="btn small" onClick={syncBattleNet} disabled={busy} title="Needs your realm set on this character">
+          <button className="btn small" onClick={syncBattleNet} disabled={busy} title="Needs your ruleset (or realm) set on this character">
             {busy && mode !== 'paste' ? 'Syncing…' : '⟳ Battle.net'}
           </button>
           <button className="btn ghost small" onClick={() => setMode(mode === 'paste' ? null : 'paste')} disabled={busy}>

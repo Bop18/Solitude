@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { DAYS, classColor } from '@/lib/wow';
 import { bestBlocks, hourLabel, nextDate, toLocalInput } from '@/lib/availability';
-import { fetchAll, itemsForLevels, mainsByOwner, rankDungeons } from '@/lib/suggest';
+import { fetchAll, itemsForLevels, loadCharactersWithGear, loadDungeons, mainsByOwner, rankDungeons } from '@/lib/suggest';
 
 // Dashboard: "Suggested next run": the best time from Availability, and the dungeon
 // with the most upgrades for the people free then.
@@ -19,8 +19,8 @@ export default function SuggestedRun() {
         const [hours, profiles, characters, dungeons] = await Promise.all([
           fetchAll(() => supabase.from('availability_hours').select('*')).catch(() => []),
           supabase.from('profiles').select('id, display_name').then((r) => r.data ?? []),
-          supabase.from('characters').select('id, name, class, level, role, owner, is_main, character_gear(slot, item_name, items(*))').then((r) => r.data ?? []),
-          supabase.from('dungeons').select('*').then((r) => r.data ?? []),
+          loadCharactersWithGear(),
+          loadDungeons(),
         ]);
         const mains = mainsByOwner(characters);
         const names = Object.fromEntries(profiles.map((p) => [p.id, p.display_name]));

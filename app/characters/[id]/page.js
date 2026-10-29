@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { itemsForLevels, loadDungeons } from '@/lib/suggest';
 import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
 import ItemSearch from '@/components/ItemSearch';
@@ -11,7 +12,7 @@ import WantControl from '@/components/WantControl';
 import LevelBar from '@/components/LevelBar';
 import SyncGear from '@/components/SyncGear';
 import { timeAgo } from '@/components/ActivityFeed';
-import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor } from '@/lib/wow';
+import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
 import { upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
 
 function gainLabel(u) {
@@ -54,14 +55,11 @@ export default function CharacterPage() {
     // Dungeon loot around this character's level, for "Upgrades to look for"
     if (c.data) {
       const lvl = c.data.level;
-      const { data: near } = await supabase
-        .from('items')
-        .select('*, dungeons(id, name)')
-        .not('dungeon_id', 'is', null)
-        .lte('req_level', lvl + 2)
-        .gte('req_level', Math.max(1, lvl - 12))
-        .limit(2000);
-      setNearby(near ?? []);
+      const [near, dungeons] = await Promise.all([itemsForLevels(Math.max(1, lvl - 2), lvl), loadDungeons()]);
+      const byId = Object.fromEntries(dungeons.map((d) => [d.id, { id: d.id, name: d.name }]));
+      setNearby(near
+        .filter((i) => i.req_level == null || (i.req_level <= lvl + 2 && i.req_level >= lvl - 12))
+        .map((i) => ({ ...i, dungeons: byId[i.dungeon_id] })));
     }
     setLoaded(true);
   }, [id]);
@@ -140,7 +138,7 @@ export default function CharacterPage() {
   // ---------- Edit character ----------
   function startEdit() {
     setEditForm({
-      name: char.name, realm: char.realm ?? '', class: char.class, race: char.race ?? '',
+      name: char.name, surname: char.surname ?? '', realm: char.realm ?? '', class: char.class, race: char.race ?? '',
       role: char.role ?? 'dps', level: char.level, is_main: char.is_main,
     });
   }
@@ -158,6 +156,7 @@ export default function CharacterPage() {
       .from('characters')
       .update({
         name: editForm.name.trim(),
+        surname: editForm.surname.trim() || null,
         realm: editForm.realm.trim() || null,
         class: editForm.class,
         race: editForm.race || null,
@@ -190,7 +189,7 @@ export default function CharacterPage() {
     <>
       <p><Link href="/roster">← Roster</Link></p>
       <div className="row spread">
-        <h1 style={{ color: classColor(char.class) }}>{char.name}</h1>
+        <h1 style={{ color: classColor(char.class) }}>{char.name}{char.surname ? ` ${char.surname}` : ''}</h1>
         {isMine && !editForm && <button className="btn ghost small" onClick={startEdit}>✎ Edit character</button>}
       </div>
 
@@ -199,7 +198,12 @@ export default function CharacterPage() {
           <h2>Edit character</h2>
           <div className="form-grid">
             <div><label htmlFor="ename">Name</label><input id="ename" required value={editForm.name} onChange={setField('name')} /></div>
-            <div><label htmlFor="erealm">Realm</label><input id="erealm" value={editForm.realm} onChange={setField('realm')} placeholder="Optional" /></div>
+            <div><label htmlFor="esurname">Surname</label><input id="esurname" value={editForm.surname} onChange={setField('surname')} placeholder="Second name" /></div>
+            <div>
+              <label htmlFor="erealm">Ruleset</label>
+              <input id="erealm" list="erulesets" value={editForm.realm} onChange={setField('realm')} placeholder="Normal, PvP, RP…" />
+              <datalist id="erulesets">{RULESETS.map((r) => <option key={r} value={r} />)}</datalist>
+            </div>
             <div>
               <label htmlFor="eclass">Class</label>
               <select id="eclass" value={editForm.class} onChange={setField('class')}>
