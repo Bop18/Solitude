@@ -1,31 +1,44 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
+import WantControl from '@/components/WantControl';
 import { PRIORITY, classColor } from '@/lib/wow';
 
 // "Who needs what": every open wishlist item, grouped by dungeon.
+// You can add yourself to anything here with "Want too".
 export default function LootPage() {
+  const { session } = useAuth();
+  const userId = session?.user?.id;
   const [wishes, setWishes] = useState([]);
+  const [myChars, setMyChars] = useState([]);
+  const [wantAs, setWantAs] = useState('');
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
+  const load = useCallback(async () => {
+    const [w, ch] = await Promise.all([
+      supabase
         .from('wishlist')
         .select('*, items(*, dungeons(id, name, min_level)), characters(id, name, class, level, profiles(display_name))')
         .eq('obtained', false)
-        .order('priority');
-      if (error) setError(error.message);
-      setWishes(data ?? []);
-      setLoaded(true);
-    })();
-  }, []);
+        .order('priority'),
+      supabase.from('characters').select('id, name, is_main').eq('owner', userId).order('is_main', { ascending: false }),
+    ]);
+    const err = w.error || ch.error;
+    if (err) setError(err.message);
+    setWishes(w.data ?? []);
+    setMyChars(ch.data ?? []);
+    setWantAs((cur) => cur || String(ch.data?.[0]?.id ?? ''));
+    setLoaded(true);
+  }, [userId]);
 
-  // dungeon -> item -> list of characters wanting it
+  useEffect(() => { if (userId) load(); }, [load, userId]);
+
+  // dungeon -> item -> list of wishes for it
   const dungeons = {};
   for (const w of wishes) {
     const d = w.items.dungeons ?? { id: 0, name: 'Other', min_level: 999 };
@@ -36,8 +49,18 @@ export default function LootPage() {
 
   return (
     <>
-      <h1>Loot needs</h1>
-      <p className="muted">Everything people still want, grouped by where it drops. Check here before a run, or open an event linked to a dungeon.</p>
+      <div className="row spread">
+        <h1>Loot needs</h1>
+        {myChars.length > 1 && (
+          <div className="row">
+            <label htmlFor="wa" style={{ margin: 0 }}>Wishlist for</label>
+            <select id="wa" value={wantAs} onChange={(e) => setWantAs(e.target.value)} style={{ width: 'auto' }}>
+              {myChars.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+      <p className="muted">Everything people still want, grouped by where it drops. Want something here too? Hit <strong>Want too</strong> and pick how much you need it.</p>
       {error && <p className="error">{error}</p>}
       {loaded && sorted.length === 0 && (
         <section className="panel"><p className="muted">No wishlists yet. Open a <Link href="/dungeons">dungeon</Link> and hit <strong>Want</strong> on items.</p></section>
@@ -51,11 +74,14 @@ export default function LootPage() {
           </div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Item</th><th>Boss</th><th>Wanted by</th></tr></thead>
+              <thead><tr><th>Item</th><th>Boss</th><th>Wanted by</th><th></th></tr></thead>
               <tbody>
                 {Object.values(items).map(({ item, wanters }) => (
                   <tr key={item.id}>
-                    <td><ItemName item={item} />{wanters.length > 1 && <span className="badge gold" style={{ marginLeft: 6 }}>{wanters.length} want this</span>}</td>
+                    <td>
+                      <ItemName item={item} />
+                      {wanters.length > 1 && <div><span className="badge gold">{wanters.length} want this</span></div>}
+                    </td>
                     <td className="muted">{item.boss ?? '—'}</td>
                     <td>
                       <div className="wanters">
@@ -67,6 +93,9 @@ export default function LootPage() {
                           </span>
                         ))}
                       </div>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <WantControl itemId={item.id} wanters={wanters} charId={wantAs} onChanged={load} onError={setError} />
                     </td>
                   </tr>
                 ))}

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
+import WantControl from '@/components/WantControl';
 import { CLASS_NAMES, ITEM_SLOTS, QUALITY, PRIORITY, classColor } from '@/lib/wow';
 
 const EMPTY_ITEM = { name: '', boss: '', slot: '', item_type: '', quality: 'rare', classes: [], link: '', notes: '' };
@@ -23,7 +24,6 @@ export default function DungeonPage() {
   const [classFilter, setClassFilter] = useState('');
   const [form, setForm] = useState(EMPTY_ITEM);
   const [showAdd, setShowAdd] = useState(false);
-  const [picking, setPicking] = useState(null); // item id we're choosing a priority for
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
@@ -61,37 +61,6 @@ export default function DungeonPage() {
   if (!dungeon) return <p>Dungeon not found. <Link href="/dungeons">Back</Link></p>;
 
   const wantersOf = (itemId) => wishes.filter((w) => w.item_id === itemId);
-  const iWant = (itemId) => wishes.find((w) => w.item_id === itemId && String(w.character_id) === wantAs);
-
-  function startWant(itemId) {
-    if (!wantAs) return setError('Add a character on the Roster page first, then you can want items.');
-    setError('');
-    setPicking(itemId);
-  }
-
-  // Each person adds their own request with their own priority.
-  // Other people wanting the same item never blocks you.
-  async function addWant(itemId, priority) {
-    setError('');
-    const { error } = await supabase
-      .from('wishlist')
-      .upsert({ character_id: Number(wantAs), item_id: itemId, priority, obtained: false }, { onConflict: 'character_id,item_id' });
-    if (error) setError(error.message);
-    setPicking(null);
-    load();
-  }
-
-  async function changePriority(wishId, priority) {
-    const { error } = await supabase.from('wishlist').update({ priority }).eq('id', wishId);
-    if (error) setError(error.message);
-    load();
-  }
-
-  async function removeWant(wishId) {
-    const { error } = await supabase.from('wishlist').delete().eq('id', wishId);
-    if (error) setError(error.message);
-    load();
-  }
 
   async function addItem(e) {
     e.preventDefault();
@@ -182,7 +151,6 @@ export default function DungeonPage() {
               <tbody>
                 {list.map((item) => {
                   const wanters = wantersOf(item.id);
-                  const mine = iWant(item.id);
                   return (
                     <tr key={item.id}>
                       <td>
@@ -208,32 +176,8 @@ export default function DungeonPage() {
                         )}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {picking === item.id ? (
-                          <div className="prio-picker">
-                            <span className="muted small">How much?</span>
-                            {[1, 2, 3].map((p) => (
-                              <button key={p} className={`btn small prio-btn prio-btn-${p}`} onClick={() => addWant(item.id, p)}>{PRIORITY[p]}</button>
-                            ))}
-                            <button className="btn ghost small" onClick={() => setPicking(null)} aria-label="Cancel">✕</button>
-                          </div>
-                        ) : mine ? (
-                          <div className="row" style={{ flexWrap: 'nowrap', gap: '0.4rem' }}>
-                            <select
-                              value={mine.priority}
-                              onChange={(e) => changePriority(mine.id, Number(e.target.value))}
-                              style={{ width: 'auto', padding: '0.3rem 0.5rem' }}
-                              aria-label="Your priority"
-                            >
-                              {[1, 2, 3].map((p) => <option key={p} value={p}>{PRIORITY[p]}</option>)}
-                            </select>
-                            <button className="btn ghost small" onClick={() => removeWant(mine.id)} title="Remove from your wishlist">Remove</button>
-                          </div>
-                        ) : (
-                          <button className="btn small" onClick={() => startWant(item.id)}>
-                            {wanters.length ? 'Want too' : 'Want'}
-                          </button>
-                        )}
-                        {item.created_by === userId && picking !== item.id && (
+                        <WantControl itemId={item.id} wanters={wanters} charId={wantAs} onChanged={load} onError={setError} />
+                        {item.created_by === userId && (
                           <button className="btn danger small" style={{ marginLeft: 6 }} onClick={() => deleteItem(item)} aria-label="Delete item">✕</button>
                         )}
                       </td>
