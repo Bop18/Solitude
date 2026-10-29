@@ -13,6 +13,9 @@ export default function EventsPage() {
 
   useEffect(() => {
     supabase.from('dungeons').select('id, name, kind, size').order('min_level').then(({ data }) => setDungeons(data ?? []));
+    // Coming from Availability's "Plan a run": fill in the time
+    const when = new URLSearchParams(window.location.search).get('when');
+    if (when) setForm((f) => ({ ...f, starts_at: when }));
   }, []);
 
   function pickDungeon(e) {

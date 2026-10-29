@@ -5,9 +5,13 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import LevelBar from '@/components/LevelBar';
+import { timeAgo } from '@/components/ActivityFeed';
 import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor } from '@/lib/wow';
 
 const EMPTY_FORM = { name: '', realm: '', class: 'Warrior', race: '', role: 'dps', level: 1, is_main: false };
+
+// Synced from the game in the last 2 weeks? Then the level updates by itself.
+const isSynced = (c) => c.synced_at && Date.now() - new Date(c.synced_at).getTime() < 14 * 86400000;
 
 export default function RosterPage() {
   const { session } = useAuth();
@@ -122,17 +126,26 @@ export default function RosterPage() {
                   <span className="muted small">{c.class} · <Link href={`/characters/${c.id}`}>edit, gear &amp; wishlist</Link></span>
                 </div>
                 <div className="row">
-                  <button className="btn ghost small" onClick={() => updateCharacter(c.id, { level: Math.max(1, c.level - 1) })} aria-label="Level down">−</button>
-                  <input
-                    type="number" min={1} max={MAX_LEVEL} defaultValue={c.level} key={c.level}
-                    style={{ width: 70 }}
-                    onBlur={(e) => {
-                      const lvl = Math.min(MAX_LEVEL, Math.max(1, Number(e.target.value) || 1));
-                      if (lvl !== c.level) updateCharacter(c.id, { level: lvl });
-                    }}
-                    aria-label="Level"
-                  />
-                  <button className="btn small" onClick={() => updateCharacter(c.id, { level: Math.min(MAX_LEVEL, c.level + 1) })} aria-label="Level up">Ding! +1</button>
+                  {isSynced(c) ? (
+                    // Level comes from the game automatically: no need to ding by hand
+                    <span className="badge ok-badge" title={`Level and gear update from the game (via ${c.sync_source === 'battle.net' ? 'Battle.net' : 'the Solitude addon'})`}>
+                      ⚡ Lv {c.level} · synced {timeAgo(c.synced_at)}
+                    </span>
+                  ) : (
+                    <>
+                      <button className="btn ghost small" onClick={() => updateCharacter(c.id, { level: Math.max(1, c.level - 1) })} aria-label="Level down">−</button>
+                      <input
+                        type="number" min={1} max={MAX_LEVEL} defaultValue={c.level} key={c.level}
+                        style={{ width: 70 }}
+                        onBlur={(e) => {
+                          const lvl = Math.min(MAX_LEVEL, Math.max(1, Number(e.target.value) || 1));
+                          if (lvl !== c.level) updateCharacter(c.id, { level: lvl });
+                        }}
+                        aria-label="Level"
+                      />
+                      <button className="btn small" onClick={() => updateCharacter(c.id, { level: Math.min(MAX_LEVEL, c.level + 1) })} aria-label="Level up">Ding! +1</button>
+                    </>
+                  )}
                   <select value={c.role ?? 'dps'} onChange={(e) => updateCharacter(c.id, { role: e.target.value })} style={{ width: 'auto' }} aria-label="Role">
                     {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
                   </select>
