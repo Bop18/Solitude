@@ -32,11 +32,10 @@ export default function BossTactics({ dungeonId, compact = false }) {
       return;
     }
     const fromLoot = (b.data ?? []).sort((x, y) => (x.avg_ilvl ?? 0) - (y.avg_ilvl ?? 0)).map((r) => r.boss);
-    const extra = (n.data ?? [])
-      .filter((x) => !fromLoot.some((bb) => bb.toLowerCase() === x.boss.toLowerCase()))
-      .sort((x, y) => (x.position ?? 999) - (y.position ?? 999))
-      .map((x) => x.boss);
-    setBosses([...fromLoot, ...extra]);
+    const noteList = n.data ?? [];
+    const posOf = (name) => noteList.find((x) => x.boss.toLowerCase() === name.toLowerCase())?.position;
+    const all = [...new Set([...noteList.map((x) => x.boss), ...fromLoot.filter((bb) => !noteList.some((x) => x.boss.toLowerCase() === bb.toLowerCase()))])];
+    setBosses(all.sort((a, b2) => (posOf(a) ?? 1000 + fromLoot.indexOf(a)) - (posOf(b2) ?? 1000 + fromLoot.indexOf(b2))));
     setNotes(Object.fromEntries((n.data ?? []).map((x) => [x.boss.toLowerCase(), x])));
     setLoaded(true);
   }, [dungeonId]);
@@ -140,7 +139,10 @@ export default function BossTactics({ dungeonId, compact = false }) {
                 <>
                   <TacticBody note={n} />
                   <p className="muted small" style={{ margin: '0.6rem 0 0' }}>
-                    Last edited {timeAgo(n.updated_at)}{n.profiles?.display_name ? ` by ${n.profiles.display_name}` : ''}
+                    {n.source === 'guide'
+                      ? <><span className="badge">Starter guide</span> Improve it with what works for your group.</>
+                      : <>Last edited {timeAgo(n.updated_at)}{n.profiles?.display_name ? ` by ${n.profiles.display_name}` : ''}</>}
+                    {' · '}<a href={`https://www.wowhead.com/classic/search?q=${encodeURIComponent(boss)}`} target="_blank" rel="noreferrer">More on Wowhead ↗</a>
                   </p>
                 </>
               ) : (

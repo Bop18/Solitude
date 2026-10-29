@@ -10,6 +10,7 @@ import ItemName from '@/components/ItemName';
 import EventBosses from '@/components/EventBosses';
 import RouteEditor from '@/components/RouteEditor';
 import BossTactics from '@/components/BossTactics';
+import DungeonGuide from '@/components/DungeonGuide';
 import { ROLES, EVENT_KINDS, PRIORITY, classColor } from '@/lib/wow';
 
 const STATUSES = { going: 'Going', maybe: 'Maybe', not_going: "Can't make it" };
@@ -172,6 +173,7 @@ export default function EventPage() {
               <Link href={`/dungeons/${event.dungeon_id}#tactics`} className="small">Edit tactics →</Link>
             </div>
           </div>
+          <DungeonGuide dungeonId={event.dungeon_id} compact />
           <h3 className="sub-head">Tank route</h3>
           <RouteEditor dungeonId={event.dungeon_id} userId={userId} readOnly onlyDefault />
           <h3 className="sub-head">Boss tactics</h3>

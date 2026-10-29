@@ -451,3 +451,12 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
 .step-note { color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; }
 .sub-head { font-size: 0.85rem; font-family: var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 1.1rem 0 0.5rem; }
 .route-wrap .panel .panel { box-shadow: none; }
+
+/* ---------- Dungeon guide ---------- */
+.guide-lead { font-size: 1.02rem; margin-top: 0; }
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.7rem; }
+.guide-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.7rem 0.85rem; font-size: 0.92rem; }
+.guide-route { margin-top: 0.9rem; }
+.guide-route ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+.guide-route li { margin-bottom: 0.2rem; }
+.guide-compact { margin-bottom: 0.5rem; }

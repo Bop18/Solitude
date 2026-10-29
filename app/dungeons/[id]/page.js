@@ -10,6 +10,7 @@ import WantControl from '@/components/WantControl';
 import RecordLoot from '@/components/RecordLoot';
 import ImportItems from '@/components/ImportItems';
 import BossTactics from '@/components/BossTactics';
+import DungeonGuide from '@/components/DungeonGuide';
 import RouteEditor from '@/components/RouteEditor';
 import { CLASS_NAMES, ITEM_SLOTS, QUALITY, PRIORITY, classColor } from '@/lib/wow';
 import { bestFor, upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
@@ -201,11 +202,16 @@ export default function DungeonPage() {
 
       <nav className="tabs">
         <a href="#loot" className={tab === 'loot' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('loot'); }}>Loot</a>
-        <a href="#tactics" className={tab === 'tactics' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('tactics'); }}>Boss tactics</a>
+        <a href="#tactics" className={tab === 'tactics' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('tactics'); }}>Guide & tactics</a>
         <a href="#routes" className={tab === 'routes' ? 'active' : ''} onClick={(e) => { e.preventDefault(); switchTab('routes'); }}>Tank routes</a>
       </nav>
 
-      {tab === 'tactics' && <BossTactics dungeonId={Number(id)} />}
+      {tab === 'tactics' && (
+        <>
+          <DungeonGuide dungeonId={Number(id)} />
+          <BossTactics dungeonId={Number(id)} />
+        </>
+      )}
       {tab === 'routes' && <RouteEditor dungeonId={Number(id)} userId={userId} />}
 
       {tab === 'loot' && (
