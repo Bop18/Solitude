@@ -8,6 +8,9 @@ import { useAuth } from '@/components/AuthProvider';
 import { formatWhen } from '@/components/EventCard';
 import ItemName from '@/components/ItemName';
 import EventBosses from '@/components/EventBosses';
+import RouteEditor from '@/components/RouteEditor';
+import BossTactics from '@/components/BossTactics';
+import DungeonGuide from '@/components/DungeonGuide';
 import { ROLES, EVENT_KINDS, PRIORITY, classColor } from '@/lib/wow';
 
 const STATUSES = { going: 'Going', maybe: 'Maybe', not_going: "Can't make it" };
@@ -28,7 +31,7 @@ export default function EventPage() {
 
   const load = useCallback(async () => {
     const [ev, su, ch] = await Promise.all([
-      supabase.from('events').select('*, profiles(display_name), dungeons(id, name)').eq('id', id).maybeSingle(),
+      supabase.from('events').select('*, profiles!created_by(display_name), dungeons!dungeon_id(id, name)').eq('id', id).maybeSingle(),
       supabase.from('event_signups').select('*, profiles(display_name), characters(name, class, level)').eq('event_id', id),
       supabase.from('characters').select('*').eq('owner', userId).order('is_main', { ascending: false }),
     ]);
@@ -64,7 +67,7 @@ export default function EventPage() {
   useEffect(() => { if (userId) load(); }, [load, userId]);
 
   if (!loaded) return <p className="muted">Loading…</p>;
-  if (!event) return <p>Event not found. <Link href="/events">Back to events</Link></p>;
+  if (!event) return <p>{error ? <span className="error">Couldn&apos;t load this event: {error}</span> : 'Event not found.'} <Link href="/events">Back to events</Link></p>;
 
   const mySignup = signups.find((s) => s.user_id === userId);
   const going = signups.filter((s) => s.status === 'going');
@@ -147,7 +150,7 @@ export default function EventPage() {
             const list = going.filter((s) => s.role === role);
             return (
               <div key={role} className="role-col">
-                <h3>{r.icon} {r.label}s ({list.length})</h3>
+                <h3>{r.icon} {role === 'dps' ? 'DPS' : `${r.label}s`} ({list.length})</h3>
                 {list.length === 0 ? <p className="muted small">None yet</p> : list.map((s) => <SignupLine key={s.user_id} s={s} />)}
               </div>
             );
@@ -160,6 +163,23 @@ export default function EventPage() {
           </div>
         )}
       </section>
+
+      {event.dungeon_id && (
+        <section className="panel">
+          <div className="row spread">
+            <h2>Before you go</h2>
+            <div className="row">
+              <Link href={`/dungeons/${event.dungeon_id}#routes`} className="small">All routes →</Link>
+              <Link href={`/dungeons/${event.dungeon_id}#tactics`} className="small">Edit tactics →</Link>
+            </div>
+          </div>
+          <DungeonGuide dungeonId={event.dungeon_id} compact />
+          <h3 className="sub-head">Tank route</h3>
+          <RouteEditor dungeonId={event.dungeon_id} userId={userId} readOnly onlyDefault />
+          <h3 className="sub-head">Boss tactics</h3>
+          <BossTactics dungeonId={event.dungeon_id} compact />
+        </section>
+      )}
 
       {event.dungeon_id && <EventBosses event={event} signups={signups} userId={userId} />}
 

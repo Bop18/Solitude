@@ -20,6 +20,9 @@ const themeScript = `
     var saved = localStorage.getItem('theme');
     var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     document.documentElement.dataset.theme = theme;
+    var accent = localStorage.getItem('accent');
+    if (!accent || accent === 'main') accent = localStorage.getItem('accent-main'); // default: your main's class
+    if (accent && accent !== 'solitude') document.documentElement.dataset.accent = accent;
   } catch (e) {
     document.documentElement.dataset.theme = 'dark';
   }

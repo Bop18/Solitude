@@ -8,11 +8,13 @@ A members-only site for our WoW group: track characters, levels and gear, see wh
 
 | Page | What it does |
 |---|---|
-| **Dashboard** | Next runs, the levelling race, and an **activity feed** ("Roob hit level 40!", "Bop got [Cruel Barb]") |
+| **Dashboard** | A **Tonight** banner with a live countdown and one-tap "I'm in", **your next steps** (unanswered runs, your best upgrade dungeon, missing availability), a **suggested next run** (best time + the dungeon with the most upgrades for whoever's free), next runs, the levelling race and an **activity feed** |
+| **Settings** | Click your name in the top bar: light/dark, a colour theme (Mage, Warlock, Druid… or "match my main") and your display name |
 | **Roster** | Everyone's characters with class colours and level bars. **Ding! +1** when you level |
 | **Availability** | Paint the hours you can play (click and drag). The group grid shows overlap and when you have a tank + healer + 5; best times come with a one-click **Plan a run** |
 | **Events** | Plan a run, sign up with a character and role. Linked to a dungeon, it lists the loot the group needs, with an **Award** button |
 | **Dungeons** | Every Classic dungeon and raid with **all its loot loaded automatically**: stats, boss, drop chance, **which classes it's best for**, and **who in your group it's an upgrade for** |
+| **Boss tactics & tank routes** | Every Classic dungeon and raid comes with a starter guide: where it is, what to grab first, the route, and every boss explained with tank / healer / DPS tips (edit them as you learn WoW: Forever). On each dungeon: a short strategy per boss with tank / healer / DPS tips, and tank routes drawn on a map (upload a screenshot, click to drop numbered pulls, drag them into place). Linked events show tonight's route and tactics |
 | **Character pages** | Gear in every slot (search the real item list), **"Upgrades to look for"** across all dungeons near your level, your Needs, and loot received |
 | **Loot** | Who needs what (with **Need too** and **Looted** buttons) and the full **loot history**, with a count per player to keep things fair |
 | **Progress** | This week's raid progress boss by boss, dungeon and raid run counts, most active players, recent runs and first kills. **Filled in automatically** by the addon + companion |
@@ -46,6 +48,9 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    5. `supabase/schema-5-gear-sync.sql`
    6. `supabase/schema-6-progress.sql`
    7. `supabase/schema-7-availability.sql`
+   8. `supabase/schema-8-tactics-routes.sql`
+   9. `supabase/schema-9-starter-guides.sql`, then on the site go to **Dungeons → Load starter guides**
+   10. `supabase/schema-10-forever.sql` (surnames, and WoW: Forever's rulesets instead of realms)
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -64,9 +69,9 @@ npm run dev
 
 Open http://localhost:3000.
 
-### 3. Load the loot list (once)
+### 3. Load the loot list and guides (once)
 
-Log in, open **Dungeons**, and press **Load Classic loot**. It takes about 30 seconds. Anyone can do it, and it only needs doing once.
+Log in, open **Dungeons**, and press **Load Classic loot**, then **Load starter guides**. It takes about 30 seconds. Anyone can do it, and it only needs doing once.
 
 ### 4. Put it online (Vercel)
 
@@ -109,7 +114,11 @@ Blizzard's official API. It works today for Classic Era characters. Whether it w
    - `BLIZZARD_CLIENT_ID` = your client ID
    - `BLIZZARD_CLIENT_SECRET` = your client secret
    - `BLIZZARD_REGION` = `eu` (or `us`)
-   - `BLIZZARD_NAMESPACE` = `profile-classic1x` for Classic Era. When WoW: Forever launches, change this to its namespace once Blizzard documents it.
+   - `BLIZZARD_NAMESPACE`: **leave this out.** The site tries the likely WoW: Forever / Classic namespaces and remembers which one works. Only set it to force one (e.g. `profile-classic1x` for Classic Era).
+
+   WoW: Forever has no realms, so on each character pick the **Ruleset** (Normal, PvP, RP, RP-PvP, Hardcore) and fill in the **Surname**. The site works out which Blizzard server and name spelling to use.
+
+   Once this is set up, everyone's characters **sync themselves** when they open the site (if they're more than 3 hours old and have a ruleset filled in). The Sync button still works for an instant refresh.
    Then **Redeploy**.
 4. Make sure the character's **Realm** is filled in (Edit character), then press **⟳ Battle.net**.
 
@@ -164,7 +173,8 @@ Level milestones post every 10 levels and at max level. To change that, edit `ac
 
 ```
 app/
-  page.js                  Dashboard (runs, levelling race, activity feed)
+  page.js                  Dashboard (tonight banner, next steps, suggested run, levelling race, activity)
+  settings/page.js         Theme, colour and display name
   login/page.js            Login / sign-up
   roster/page.js           Characters and levels
   availability/page.js     Weekly availability + heatmap

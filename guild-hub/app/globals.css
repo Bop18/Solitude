@@ -406,3 +406,180 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
 .hover-info { margin-top: 0.75rem; min-height: 1.5rem; font-size: 0.9rem; }
 .best-blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
 .best-block { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 0.9rem; }
+
+/* ---------- Boss tactics ---------- */
+.tactics-list > .panel { margin-bottom: 1rem; }
+.tactic-summary { font-size: 1rem; margin: 0.7rem 0 0.5rem; white-space: pre-wrap; }
+.tactic-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.7rem; }
+.tactic-role { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.6rem 0.75rem; }
+.tactic-role-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem; }
+.tactic-role-text { white-space: pre-wrap; font-size: 0.92rem; }
+.tactics-compact details { border-bottom: 1px solid var(--border); padding: 0.5rem 0; }
+.tactics-compact details:last-child { border-bottom: none; }
+.tactics-compact summary { cursor: pointer; }
+.tactics-compact .tactic-body { margin-top: 0.5rem; }
+
+/* ---------- Tank routes ---------- */
+.route-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: 1.2rem; margin-top: 0.8rem; align-items: start; }
+@media (max-width: 820px) { .route-layout { grid-template-columns: 1fr; } }
+.route-map { position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); background: var(--bg-sunken); touch-action: none; user-select: none; }
+.route-map img { display: block; width: 100%; height: auto; pointer-events: none; }
+.route-map.editing { cursor: crosshair; }
+.route-map.placing { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.route-path { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.route-path polyline { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 6 5; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(0,0,0,0.8)); }
+.pin {
+  position: absolute; transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; cursor: pointer;
+  border: 2px solid #fff; color: #fff; background: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.6); padding: 0; font-family: inherit;
+}
+.route-map.editing .pin { cursor: grab; touch-action: none; }
+.pin.active { transform: translate(-50%, -50%) scale(1.25); z-index: 2; box-shadow: 0 0 0 4px var(--accent-soft), 0 2px 8px rgba(0,0,0,0.6); }
+.pin-pull { background: #5865e8; }
+.pin-boss { background: #d6455a; }
+.pin-skip { background: #6b7085; }
+.pin-note { background: #1f9a78; }
+.map-empty { border: 2px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 1.5rem; text-align: center; }
+.link-like { display: inline; color: var(--accent); cursor: pointer; margin: 0; font-size: inherit; font-weight: inherit; }
+.route-name-input { max-width: 340px; font-size: 1.1rem; font-weight: 600; }
+.step-list { list-style: none; padding: 0; margin: 0 0 0.75rem; }
+.step { display: flex; gap: 0.7rem; padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid transparent; cursor: default; }
+.step.active { border-color: var(--accent); background: var(--accent-soft); }
+.step-num { flex-shrink: 0; width: 26px; height: 26px; border-radius: 999px; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; }
+.step-body { flex: 1; min-width: 0; }
+.step-title { font-weight: 600; }
+.step-note { color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; }
+.sub-head { font-size: 0.85rem; font-family: var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 1.1rem 0 0.5rem; }
+.route-wrap .panel .panel { box-shadow: none; }
+
+/* ---------- Dungeon guide ---------- */
+.guide-lead { font-size: 1.02rem; margin-top: 0; }
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.7rem; }
+.guide-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.7rem 0.85rem; font-size: 0.92rem; }
+.guide-route { margin-top: 0.9rem; }
+.guide-route ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+.guide-route li { margin-bottom: 0.2rem; }
+.guide-compact { margin-bottom: 0.5rem; }
+
+/* ============================================================
+   Colour themes (Settings → Colour theme). Each person picks their own.
+   They only change the accent colour and background glow; dark/light
+   mode is chosen separately.
+   ============================================================ */
+:root[data-accent='mage'] { --accent: #69ccf0; --on-accent: #06121c; --glow-1: rgba(105,204,240,0.20); --glow-2: rgba(140,90,255,0.14); }
+:root[data-theme='light'][data-accent='mage'] { --accent: #137fb0; --on-accent: #ffffff; --glow-1: rgba(105,204,240,0.16); --glow-2: rgba(140,90,255,0.10); }
+:root[data-accent='warlock'] { --accent: #a98bff; --on-accent: #0d0a1c; --glow-1: rgba(140,100,255,0.22); --glow-2: rgba(110,220,90,0.12); }
+:root[data-theme='light'][data-accent='warlock'] { --accent: #6a48d6; --on-accent: #ffffff; --glow-1: rgba(140,100,255,0.14); --glow-2: rgba(90,190,70,0.10); }
+:root[data-accent='priest'] { --accent: #e9e9f2; --on-accent: #12121a; --glow-1: rgba(220,220,255,0.12); --glow-2: rgba(255,215,130,0.10); }
+:root[data-theme='light'][data-accent='priest'] { --accent: #5d6380; --on-accent: #ffffff; --glow-1: rgba(150,160,210,0.14); --glow-2: rgba(230,190,90,0.12); }
+:root[data-accent='paladin'] { --accent: #f48cba; --on-accent: #200a14; --glow-1: rgba(244,140,186,0.18); --glow-2: rgba(255,205,90,0.14); }
+:root[data-theme='light'][data-accent='paladin'] { --accent: #c03f7a; --on-accent: #ffffff; --glow-1: rgba(244,140,186,0.14); --glow-2: rgba(230,180,60,0.12); }
+:root[data-accent='rogue'] { --accent: #fff468; --on-accent: #1a1800; --glow-1: rgba(255,244,104,0.12); --glow-2: rgba(255,170,60,0.10); }
+:root[data-theme='light'][data-accent='rogue'] { --accent: #9a8100; --on-accent: #ffffff; --glow-1: rgba(230,210,60,0.14); --glow-2: rgba(230,150,40,0.10); }
+:root[data-accent='druid'] { --accent: #ff8a2a; --on-accent: #1f0e00; --glow-1: rgba(255,138,42,0.16); --glow-2: rgba(80,200,110,0.12); }
+:root[data-theme='light'][data-accent='druid'] { --accent: #c25700; --on-accent: #ffffff; --glow-1: rgba(255,138,42,0.12); --glow-2: rgba(60,170,90,0.10); }
+:root[data-accent='hunter'] { --accent: #aad372; --on-accent: #0f1a05; --glow-1: rgba(170,211,114,0.16); --glow-2: rgba(200,160,90,0.12); }
+:root[data-theme='light'][data-accent='hunter'] { --accent: #4f7d1d; --on-accent: #ffffff; --glow-1: rgba(150,200,90,0.14); --glow-2: rgba(190,140,70,0.10); }
+:root[data-accent='shaman'] { --accent: #3d8bff; --on-accent: #ffffff; --glow-1: rgba(61,139,255,0.22); --glow-2: rgba(60,210,200,0.14); }
+:root[data-theme='light'][data-accent='shaman'] { --accent: #0a5fc4; --on-accent: #ffffff; --glow-1: rgba(61,139,255,0.14); --glow-2: rgba(40,180,180,0.10); }
+:root[data-accent='warrior'] { --accent: #d0a77a; --on-accent: #1c1208; --glow-1: rgba(208,167,122,0.16); --glow-2: rgba(220,70,60,0.14); }
+:root[data-theme='light'][data-accent='warrior'] { --accent: #8a6640; --on-accent: #ffffff; --glow-1: rgba(200,150,100,0.14); --glow-2: rgba(200,60,50,0.10); }
+:root[data-accent] { --accent-hover: color-mix(in srgb, var(--accent) 82%, #ffffff); --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent); }
+:root[data-theme='light'][data-accent] { --accent-hover: color-mix(in srgb, var(--accent) 85%, #000000); --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* ---------- Settings ---------- */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.5rem; }
+.swatch {
+  display: flex; align-items: center; gap: 0.55rem; padding: 0.55rem 0.7rem; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font: inherit; font-weight: 500; text-align: left;
+}
+.swatch:hover { border-color: var(--border-strong); }
+.swatch.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.swatch:disabled { opacity: 0.5; cursor: not-allowed; }
+.swatch-dot { width: 16px; height: 16px; border-radius: 999px; flex-shrink: 0; }
+.user-link { color: var(--muted); }
+.user-link:hover { color: var(--text); text-decoration: none; }
+
+/* ---------- Dashboard: suggested run ---------- */
+.suggest { background: linear-gradient(140deg, var(--accent-soft), var(--panel) 55%); }
+.suggest-main { margin-top: 0.3rem; }
+.suggest-dungeon { font-family: var(--font-head); font-size: 1.5rem; font-weight: 600; }
+.suggest-chars { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; }
+.suggest-char { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; }
+
+/* ---------- Dashboard: tonight banner ---------- */
+.tonight {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 1.4rem; align-items: center;
+  padding: 1.1rem 1.4rem; margin: 0 0 1.4rem; border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 18%, var(--panel)), var(--panel) 70%);
+  box-shadow: 0 0 40px -18px var(--accent);
+}
+.tonight-when { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; padding-right: 1.4rem; border-right: 1px solid var(--border); }
+.tonight-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.tonight-count { font-family: var(--font-head); font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tonight-title { font-family: var(--font-head); font-size: 1.3rem; font-weight: 600; color: var(--text); }
+.tonight-people { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.5rem 0 0.35rem; }
+.tonight .chip { font-size: 0.8rem; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); }
+.tonight-gap { font-size: 0.85rem; font-weight: 600; color: #e0b25c; }
+:root[data-theme='light'] .tonight-gap { color: #9a5b00; }
+.tonight-ok { font-size: 0.85rem; color: var(--ok); font-weight: 600; }
+.tonight-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+@media (max-width: 720px) {
+  .tonight { grid-template-columns: 1fr; gap: 0.8rem; }
+  .tonight-when { flex-direction: row; align-items: baseline; gap: 0.6rem; border-right: 0; padding-right: 0; }
+  .tonight-actions { flex-direction: row; align-items: center; flex-wrap: wrap; }
+}
+
+/* ---------- Dashboard: next steps ---------- */
+.todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.todo-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
+.todo-item:last-child { border-bottom: 0; }
+.todo-icon { flex: none; width: 1.8rem; height: 1.8rem; border-radius: 50%; display: grid; place-items: center; font-size: 0.85rem; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.todo-ok .todo-icon { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.todo-up .todo-icon { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.todo-text { flex: 1; min-width: 0; }
+.todo-item .btn { flex: none; }
+
+/* ---------- Stronger theme colour ----------
+   Everything below is driven by --accent, so it follows whichever
+   colour theme (or main's class) the person has. */
+:root { --theme-strength: 34%; }
+:root[data-theme='light'] { --theme-strength: 22%; }
+
+body {
+  background:
+    radial-gradient(1100px 700px at 0% -10%, color-mix(in srgb, var(--accent) var(--theme-strength), transparent), transparent 70%),
+    radial-gradient(900px 600px at 100% 0%, color-mix(in srgb, var(--accent) calc(var(--theme-strength) * 0.45), transparent), transparent 70%),
+    radial-gradient(1000px 700px at 100% 110%, var(--glow-2), transparent 70%),
+    radial-gradient(800px 600px at 0% 100%, var(--glow-1), transparent 70%),
+    color-mix(in srgb, var(--accent) 4%, var(--bg));
+  background-attachment: fixed;
+}
+
+/* Top bar: a coloured line along the bottom and a tinted glass */
+.topbar {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, var(--bg)), color-mix(in srgb, var(--bg) 82%, transparent) 60%);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 1px 24px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.brand-icon { color: var(--accent); text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent); }
+.nav a.active { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+
+/* Panels: a soft wash of the theme colour from the top edge */
+.panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 11%, transparent), transparent 160px),
+    var(--panel);
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+}
+.panel h2 { color: color-mix(in srgb, var(--accent) 30%, var(--text)); }
+
+/* Page titles pick up the colour too */
+h1 {
+  background: linear-gradient(90deg, var(--text), var(--accent) 140%); display: inline-block;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* Level bars and buttons glow a little in dark mode */
+:root:not([data-theme='light']) .btn:not(.ghost) { box-shadow: 0 4px 22px -8px color-mix(in srgb, var(--accent) 80%, transparent); }

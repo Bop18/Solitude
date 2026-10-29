@@ -12,10 +12,16 @@ export default function EventsPage() {
   const [form, setForm] = useState({ title: '', kind: 'dungeon', starts_at: '', max_size: 5, notes: '', dungeon_id: '' });
 
   useEffect(() => {
-    supabase.from('dungeons').select('id, name, kind, size').order('min_level').then(({ data }) => setDungeons(data ?? []));
-    // Coming from Availability's "Plan a run": fill in the time
-    const when = new URLSearchParams(window.location.search).get('when');
+    // Coming from "Plan a run" / "Plan it": fill in the time and dungeon
+    const params = new URLSearchParams(window.location.search);
+    const when = params.get('when');
+    const dungeonId = params.get('dungeon');
     if (when) setForm((f) => ({ ...f, starts_at: when }));
+    supabase.from('dungeons').select('id, name, kind, size').order('min_level').then(({ data }) => {
+      setDungeons(data ?? []);
+      const d = (data ?? []).find((x) => String(x.id) === dungeonId);
+      if (d) setForm((f) => ({ ...f, dungeon_id: String(d.id), title: f.title || d.name, kind: d.kind, max_size: d.size ?? f.max_size }));
+    });
   }, []);
 
   function pickDungeon(e) {

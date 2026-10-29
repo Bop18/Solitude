@@ -6,9 +6,9 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import LevelBar from '@/components/LevelBar';
 import { timeAgo } from '@/components/ActivityFeed';
-import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor } from '@/lib/wow';
+import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
 
-const EMPTY_FORM = { name: '', realm: '', class: 'Warrior', race: '', role: 'dps', level: 1, is_main: false };
+const EMPTY_FORM = { name: '', surname: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', level: 1, is_main: false };
 
 // Synced from the game in the last 2 weeks? Then the level updates by itself.
 const isSynced = (c) => c.synced_at && Date.now() - new Date(c.synced_at).getTime() < 14 * 86400000;
@@ -44,6 +44,7 @@ export default function RosterPage() {
     const { error } = await supabase.from('characters').insert({
       ...form,
       name: form.name.trim(),
+      surname: form.surname.trim() || null,
       realm: form.realm.trim() || null,
       race: form.race || null,
       level: Number(form.level),
@@ -100,7 +101,7 @@ export default function RosterPage() {
                     <td>
                       <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>
                       {c.is_main && <span className="badge gold" style={{ marginLeft: 6 }}>Main</span>}
-                      {c.realm && <div className="muted small">{c.realm}</div>}
+                      {(c.surname || c.realm) && <div className="muted small">{[c.surname, c.realm].filter(Boolean).join(' · ')}</div>}
                     </td>
                     <td className="muted">{c.profiles?.display_name}</td>
                     <td>{c.race ? `${c.race} ` : ''}{c.class}</td>
@@ -166,8 +167,13 @@ export default function RosterPage() {
                 <input id="cname" required value={form.name} onChange={set('name')} />
               </div>
               <div>
-                <label htmlFor="realm">Realm</label>
-                <input id="realm" value={form.realm} onChange={set('realm')} placeholder="Optional" />
+                <label htmlFor="surname">Surname</label>
+                <input id="surname" value={form.surname} onChange={set('surname')} placeholder="Your character's second name" />
+              </div>
+              <div>
+                <label htmlFor="realm">Ruleset</label>
+                <input id="realm" list="rulesets" value={form.realm} onChange={set('realm')} placeholder="Normal, PvP, RP…" />
+                <datalist id="rulesets">{RULESETS.map((r) => <option key={r} value={r} />)}</datalist>
               </div>
               <div>
                 <label htmlFor="class">Class</label>
