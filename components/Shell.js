@@ -13,6 +13,7 @@ const LINKS = [
   { href: '/roster', label: 'Roster' },
   { href: '/availability', label: 'Availability' },
   { href: '/events', label: 'Events' },
+  { href: '/progress', label: 'Progress' },
   { href: '/dungeons', label: 'Dungeons' },
   { href: '/loot', label: 'Loot' },
 ];

@@ -7,6 +7,7 @@ import { useAuth } from '@/components/AuthProvider';
 import EventCard from '@/components/EventCard';
 import LevelBar from '@/components/LevelBar';
 import ActivityFeed from '@/components/ActivityFeed';
+import WeeklyCard from '@/components/WeeklyCard';
 import { MAX_LEVEL, classColor } from '@/lib/wow';
 
 export default function Dashboard() {
@@ -72,7 +73,9 @@ export default function Dashboard() {
           </section>
         </div>
 
-        <section className="panel" style={{ alignSelf: 'start' }}>
+        <div className="stack-panels">
+        <WeeklyCard />
+        <section className="panel">
           <div className="row spread">
             <h2>Levelling race</h2>
             <Link href="/roster" className="small">Full roster →</Link>
@@ -97,6 +100,7 @@ export default function Dashboard() {
             </>
           )}
         </section>
+        </div>
       </div>
     </>
   );

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { formatWhen } from '@/components/EventCard';
 import ItemName from '@/components/ItemName';
+import EventBosses from '@/components/EventBosses';
 import { ROLES, EVENT_KINDS, PRIORITY, classColor } from '@/lib/wow';
 
 const STATUSES = { going: 'Going', maybe: 'Maybe', not_going: "Can't make it" };
@@ -159,6 +160,8 @@ export default function EventPage() {
           </div>
         )}
       </section>
+
+      {event.dungeon_id && <EventBosses event={event} signups={signups} userId={userId} />}
 
       {event.dungeons && (
         <section className="panel">

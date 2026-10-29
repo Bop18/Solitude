@@ -285,6 +285,36 @@ code { font-size: 0.85em; background: var(--panel-2); padding: 0.1rem 0.35rem; b
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
+/* ---------- Progress ---------- */
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.9rem; margin-bottom: 1.25rem; }
+.stat-tile { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+.stat-num { font-family: var(--font-head); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+.stat-label { color: var(--muted); font-size: 0.85rem; }
+.raid-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+.raid-progress { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.85rem 1rem; }
+.raid-progress.compact { background: none; border: none; padding: 0; }
+.raid-name { font-weight: 600; color: var(--text); }
+.raid-count { font-weight: 700; font-size: 0.9rem; color: var(--accent); }
+.raid-count.done { color: var(--ok); }
+.raid-bar { margin: 0.45rem 0 0.6rem; height: 8px; }
+.raid-progress.compact .raid-bar { margin-bottom: 0.2rem; }
+.boss-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.boss-chip { font-size: 0.75rem; padding: 0.12rem 0.5rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.boss-chip.killed { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.run-list > * + * { margin-top: 0.6rem; }
+.run { padding: 0.7rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-2); }
+.run-members { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; margin-top: 0.3rem; font-size: 0.85rem; font-weight: 600; }
+.boss-check { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.boss-check label { margin: 0; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.65rem; border: 1px solid var(--border); border-radius: 999px; color: var(--text); cursor: pointer; font-size: 0.85rem; }
+.boss-check label.on { border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.boss-check input { width: auto; accent-color: var(--ok); }
+.steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 2.6rem; margin-bottom: 1.2rem; }
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0; width: 1.9rem; height: 1.9rem; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); font-weight: 700;
+}
+
 /* ---------- Activity feed ---------- */
 .feed { display: flex; flex-direction: column; }
 .feed-item { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }

@@ -18,7 +18,7 @@ export function timeAgo(iso) {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
-const ICONS = { level: '⬆️', loot: '🎁', event: '📅', character: '✨' };
+const ICONS = { level: '⬆️', loot: '🎁', event: '📅', character: '✨', kill: '⚔️' };
 
 export default function ActivityFeed({ limit = 15 }) {
   const [rows, setRows] = useState([]);
@@ -27,11 +27,16 @@ export default function ActivityFeed({ limit = 15 }) {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
+      const base = '*, characters(id, name, class), items(*), events(id, title, starts_at), profiles(display_name)';
+      let { data, error } = await supabase
         .from('activity')
-        .select('*, characters(id, name, class), items(*), events(id, title, starts_at), profiles(display_name)')
+        .select(`${base}, dungeons(id, name)`)
         .order('created_at', { ascending: false })
         .limit(limit);
+      if (error) {
+        // Older database (before the progress update): load without dungeon names
+        ({ data, error } = await supabase.from('activity').select(base).order('created_at', { ascending: false }).limit(limit));
+      }
       if (error) setError(error.message);
       setRows(data ?? []);
       setLoaded(true);
@@ -51,6 +56,13 @@ export default function ActivityFeed({ limit = 15 }) {
         return a.events
           ? <><strong>{a.profiles?.display_name ?? 'Someone'}</strong> planned <Link href={`/events/${a.events.id}`}>{a.events.title}</Link></>
           : <><strong>{a.profiles?.display_name ?? 'Someone'}</strong> planned a run</>;
+      case 'kill':
+        return (
+          <>
+            First kill: <strong>{a.detail}</strong>
+            {a.dungeons && <> in <Link href={`/dungeons/${a.dungeons.id}`}>{a.dungeons.name}</Link></>}!
+          </>
+        );
       case 'character':
         return <><strong>{a.profiles?.display_name ?? 'Someone'}</strong> added <Char c={a.characters} />{a.level ? `, level ${a.level}` : ''}</>;
       default:

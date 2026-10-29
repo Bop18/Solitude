@@ -15,6 +15,7 @@ A members-only site for our WoW group: track characters, levels and gear, see wh
 | **Dungeons** | Every Classic dungeon and raid with **all its loot loaded automatically**: stats, boss, drop chance, **which classes it's best for**, and **who in your group it's an upgrade for** |
 | **Character pages** | Gear in every slot (search the real item list), **"Upgrades to look for"** across all dungeons near your level, your Needs, and loot received |
 | **Loot** | Who needs what (with **Need too** and **Looted** buttons) and the full **loot history**, with a count per player to keep things fair |
+| **Progress** | This week's raid progress boss by boss, dungeon and raid run counts, most active players, recent runs and first kills. **Filled in automatically** by the addon + companion |
 | **Discord** | New runs, reminders before a run starts, loot received and level milestones posted to your Discord channel |
 
 Everyone logged in can see everything; you can only change your own characters, gear, availability, sign-ups and Needs. That's enforced by the database, not just the page.
@@ -43,6 +44,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    3. `supabase/schema-3-auto-loot.sql`
    4. `supabase/schema-4-icons.sql`
    5. `supabase/schema-5-gear-sync.sql`
+   6. `supabase/schema-6-progress.sql`
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -71,7 +73,19 @@ Log in, open **Dungeons**, and press **Load Classic loot**. It takes about 30 se
 2. Add the environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Deploy**.
 3. In Supabase, **Authentication → URL Configuration**: set **Site URL** to your Vercel address.
 
-### 5. Sync gear and level from the game (optional, two ways)
+### 5. Automatic tracking: addon + companion (recommended)
+
+The **Solitude addon** records boss kills (and who was there), raid lockouts, level and gear while you play. WoW saves that when you log out or `/reload`, and the **Solitude companion** on your PC uploads it. Progress, gear and levels then update with nobody filling anything in.
+
+- Setup guide with downloads: the site's **/companion** page (linked from Progress).
+- Only one person per group needs the companion for kills to count for everyone there.
+- Characters it sees are added to that person's roster automatically.
+- On nights nobody runs it, tick bosses on the event page instead.
+- Weekly reset is set to EU (Wednesday 07:00 UTC). For US servers, change `WEEKLY_RESET` in `lib/site.js`.
+
+Files: `addon/Solitude` (the addon), `public/companion/` (companion + Windows helpers, served by the site), `curseforge/` (everything needed to publish the addon on CurseForge; see `curseforge/HOW-TO-PUBLISH.md`).
+
+### 6. Sync gear and level by hand (optional, two other ways)
 
 Each character page has a **Sync from the game** box. Syncing fills in every gear slot (with icons, item level and stats) and the character's level. Anything on that character's Need list that they're now wearing is ticked off and posted to the feed.
 
@@ -100,7 +114,7 @@ Blizzard's official API. It works today for Classic Era characters. Whether it w
 
 Blizzard only updates a character's profile when you **log out** in game, so log out (or switch characters) before syncing.
 
-### 6. Discord notifications (optional)
+### 7. Discord notifications (optional)
 
 1. In Discord: **Server Settings → Integrations → Webhooks → New Webhook**, pick the channel, then **Copy Webhook URL**.
 2. In Supabase **SQL Editor**, run this (with your two URLs):
@@ -160,6 +174,8 @@ app/
   characters/[id]/page.js  One character: upgrades, gear, Needs, loot received
   loot/page.js             Who needs what
   loot/history/page.js     Loot history
+  progress/page.js         Raid progress, run counts, first kills
+  companion/page.js        Setup guide for automatic tracking
   api/sync-character/      Battle.net gear sync (runs on the server)
 addon/Solitude/            In-game addon: /solitude exports your gear
 components/                Shared pieces (Need button, Looted button, item search, feed…)
