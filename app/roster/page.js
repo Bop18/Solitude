@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { specsOf } from '@/lib/specs';
 import { useAuth } from '@/components/AuthProvider';
 import LevelBar from '@/components/LevelBar';
 import { timeAgo } from '@/components/ActivityFeed';
 import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
 
-const EMPTY_FORM = { name: '', surname: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', level: 1, is_main: false };
+const EMPTY_FORM = { name: '', surname: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', spec: '', level: 1, is_main: false };
 
 // Synced from the game in the last 2 weeks? Then the level updates by itself.
 const isSynced = (c) => c.synced_at && Date.now() - new Date(c.synced_at).getTime() < 14 * 86400000;
@@ -47,6 +48,7 @@ export default function RosterPage() {
       surname: form.surname.trim() || null,
       realm: form.realm.trim() || null,
       race: form.race || null,
+      spec: specsOf(form.class).length && form.spec ? form.spec : null,
       level: Number(form.level),
     });
     if (error) setError(error.message);
@@ -194,6 +196,16 @@ export default function RosterPage() {
                   {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
                 </select>
               </div>
+              {specsOf(form.class).length > 0 && (
+                <div>
+                  <label htmlFor="spec">Spec</label>
+                  <select id="spec" value={form.spec}
+                    onChange={(e) => { const sp = specsOf(form.class).find((x) => x.id === e.target.value); setForm((f) => ({ ...f, spec: e.target.value, role: sp?.role ?? f.role })); }}>
+                    <option value="">Not sure yet</option>
+                    {specsOf(form.class).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label htmlFor="level">Level</label>
                 <input id="level" type="number" min={1} max={MAX_LEVEL} value={form.level} onChange={set('level')} />

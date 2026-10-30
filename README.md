@@ -52,6 +52,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    9. `supabase/schema-9-starter-guides.sql`, then on the site go to **Dungeons → Load starter guides**
    10. `supabase/schema-10-forever.sql` (surnames, and WoW: Forever's rulesets instead of realms)
    11. `supabase/schema-11-speed.sql` (indexes that keep the site fast as it fills up)
+   12. `supabase/schema-12-specs.sql` (a Spec on each character, e.g. Holy / Protection / Retribution)
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).

@@ -13,7 +13,8 @@ import BossTactics from '@/components/BossTactics';
 import DungeonGuide from '@/components/DungeonGuide';
 import RouteEditor from '@/components/RouteEditor';
 import { CLASS_NAMES, ITEM_SLOTS, QUALITY, PRIORITY, classColor } from '@/lib/wow';
-import { bestFor, upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
+import { bestFor, upgradeFor, statSummary, spreadAcrossSlots, specsFor } from '@/lib/itemScore';
+import { specsOf } from '@/lib/specs';
 
 const EMPTY_ITEM = { name: '', boss: '', slot: '', item_type: '', quality: 'rare', classes: [], link: '', notes: '' };
 const TRASH = 'Trash & other drops';
@@ -36,6 +37,7 @@ export default function DungeonPage() {
   const [roster, setRoster] = useState([]);
   const [wantAs, setWantAs] = useState('');
   const [classFilter, setClassFilter] = useState('');
+  const [specFilter, setSpecFilter] = useState('');
   const [onlyUpgrades, setOnlyUpgrades] = useState(false);
   const [form, setForm] = useState(EMPTY_ITEM);
   const [showAdd, setShowAdd] = useState(false);
@@ -147,7 +149,12 @@ export default function DungeonPage() {
 
   // Filters
   let shown = items;
-  if (classFilter) shown = shown.filter((i) => bestFor(i).includes(classFilter) || i.classes?.includes(classFilter));
+  if (classFilter && specFilter) {
+    // A spec picked: show what that spec actually uses, even if the class as a whole isn't "best" for it
+    shown = shown.filter((i) => (i.game_id ? specsFor(i, classFilter).includes(specFilter) : i.classes?.includes(classFilter)));
+  } else if (classFilter) {
+    shown = shown.filter((i) => bestFor(i).includes(classFilter) || i.classes?.includes(classFilter));
+  }
   if (onlyUpgrades && me) shown = shown.filter((i) => upgrades[i.id]?.some((u) => u.char.id === me.id));
 
   // Group by boss, roughly in dungeon order (lower item level first), trash last
@@ -259,10 +266,16 @@ export default function DungeonPage() {
       <section className="panel filters">
         <div className="row">
           <label htmlFor="cf" style={{ margin: 0 }}>Best for</label>
-          <select id="cf" value={classFilter} onChange={(e) => setClassFilter(e.target.value)} style={{ width: 'auto' }}>
+          <select id="cf" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setSpecFilter(''); }} style={{ width: 'auto' }}>
             <option value="">All classes</option>
             {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
           </select>
+          {specsOf(classFilter).length > 0 && (
+            <select id="sf" aria-label="Spec" value={specFilter} onChange={(e) => setSpecFilter(e.target.value)} style={{ width: 'auto' }}>
+              <option value="">All specs</option>
+              {specsOf(classFilter).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+            </select>
+          )}
         </div>
         {myChars.length > 0 && (
           <div className="row">
@@ -282,7 +295,7 @@ export default function DungeonPage() {
           <p className="muted">
             {items.length === 0
               ? 'No items for this dungeon yet.'
-              : onlyUpgrades ? `Nothing here is an upgrade for ${me?.name}.` : `No items here are best for ${classFilter}.`}
+              : onlyUpgrades ? `Nothing here is an upgrade for ${me?.name}.` : `No items here suit ${specFilter ? specsOf(classFilter).find((x) => x.id === specFilter)?.name + ' ' : ''}${classFilter}.`}
           </p>
         </section>
       )}
@@ -318,9 +331,20 @@ export default function DungeonPage() {
                           <span className="muted small" title="Its value is a special effect. Hover the item name for details.">Special effect</span>
                         ) : (
                           <div className="chips">
-                            {best.slice(0, 5).map((c) => (
-                              <span key={c} className="class-chip" style={{ color: classColor(c) }}>{c}</span>
-                            ))}
+                            {best.slice(0, 5).map((c) => {
+                              // Only some specs want it? Say which (e.g. "Paladin · Holy")
+                              const all = specsOf(c);
+                              const fit = all.length && item.game_id ? specsFor(item, c) : [];
+                              const label = fit.length && fit.length < all.length
+                                ? all.filter((sp) => fit.includes(sp.id)).map((sp) => sp.short).join('/')
+                                : '';
+                              return (
+                                <span key={c} className="class-chip" style={{ color: classColor(c) }}
+                                  title={label ? `Good for ${all.filter((sp) => fit.includes(sp.id)).map((sp) => sp.name).join(', ')} ${c}` : undefined}>
+                                  {c}{label && <span className="spec-tag"> · {label}</span>}
+                                </span>
+                              );
+                            })}
                             {best.length > 5 && <span className="muted small">+{best.length - 5}</span>}
                           </div>
                         )}

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { specsOf } from '@/lib/specs';
 import { itemsForLevels, loadDungeons } from '@/lib/suggest';
 import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
@@ -139,7 +140,7 @@ export default function CharacterPage() {
   function startEdit() {
     setEditForm({
       name: char.name, surname: char.surname ?? '', realm: char.realm ?? '', class: char.class, race: char.race ?? '',
-      role: char.role ?? 'dps', level: char.level, is_main: char.is_main,
+      role: char.role ?? 'dps', spec: char.spec ?? '', level: char.level, is_main: char.is_main,
     });
   }
   const setField = (field) => (e) =>
@@ -161,6 +162,7 @@ export default function CharacterPage() {
         class: editForm.class,
         race: editForm.race || null,
         role: editForm.role,
+        spec: specsOf(editForm.class).length && editForm.spec ? editForm.spec : null,
         level: Math.min(MAX_LEVEL, Math.max(1, Number(editForm.level) || 1)),
         is_main: editForm.is_main,
         updated_at: new Date().toISOString(),
@@ -225,6 +227,16 @@ export default function CharacterPage() {
                 {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
               </select>
             </div>
+            {specsOf(editForm.class).length > 0 && (
+              <div>
+                <label htmlFor="espec">Spec</label>
+                <select id="espec" value={editForm.spec}
+                  onChange={(e) => { const sp = specsOf(editForm.class).find((x) => x.id === e.target.value); setEditForm((f) => ({ ...f, spec: e.target.value, role: sp?.role ?? f.role })); }}>
+                  <option value="">Not sure yet</option>
+                  {specsOf(editForm.class).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                </select>
+              </div>
+            )}
             <div><label htmlFor="elevel">Level</label><input id="elevel" type="number" min={1} max={MAX_LEVEL} value={editForm.level} onChange={setField('level')} /></div>
           </div>
           <label className="checkbox"><input type="checkbox" checked={editForm.is_main} onChange={setField('is_main')} /> This is my main</label>
@@ -239,7 +251,7 @@ export default function CharacterPage() {
       )}
 
       <p className="muted">
-        {char.race ? `${char.race} ` : ''}{char.class}
+        {char.race ? `${char.race} ` : ''}{char.spec ? `${specsOf(char.class).find((x) => x.id === char.spec)?.name ?? ''} ` : ''}{char.class}
         {char.role ? ` · ${ROLES[char.role].label}` : ''}
         {char.realm ? ` · ${char.realm}` : ''} · played by {char.profiles?.display_name}
       </p>

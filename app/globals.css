@@ -583,3 +583,6 @@ h1 {
 
 /* Level bars and buttons glow a little in dark mode */
 :root:not([data-theme='light']) .btn:not(.ghost) { box-shadow: 0 4px 22px -8px color-mix(in srgb, var(--accent) 80%, transparent); }
+
+/* Spec after a class name, e.g. "Paladin · Holy" */
+.spec-tag { color: var(--muted); font-weight: 500; }
