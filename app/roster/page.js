@@ -94,7 +94,7 @@ export default function RosterPage() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Character</th><th>Player</th><th>Class</th><th>Role</th><th>Level</th></tr>
+                <tr><th>Character</th><th>Player</th><th>Class</th><th>Spec</th><th>Role</th><th>Level</th></tr>
               </thead>
               <tbody>
                 {characters.map((c) => (
@@ -106,6 +106,7 @@ export default function RosterPage() {
                     </td>
                     <td className="muted">{c.profiles?.display_name}</td>
                     <td>{c.race ? `${c.race} ` : ''}{c.class}</td>
+                    <td>{specsOf(c.class).find((sp) => sp.id === c.spec)?.name ?? <span className="muted">—</span>}</td>
                     <td>{c.role ? `${ROLES[c.role].icon} ${ROLES[c.role].label}` : '—'}</td>
                     <td><LevelBar level={c.level} className={c.class} /></td>
                   </tr>
@@ -148,9 +149,23 @@ export default function RosterPage() {
                       <button className="btn small" onClick={() => updateCharacter(c.id, { level: Math.min(MAX_LEVEL, c.level + 1) })} aria-label="Level up">Ding! +1</button>
                     </>
                   )}
-                  <select value={c.role ?? 'dps'} onChange={(e) => updateCharacter(c.id, { role: e.target.value })} style={{ width: 'auto' }} aria-label="Role">
-                    {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
-                  </select>
+                  {specsOf(c.class).length > 0 && (
+                    <select value={c.spec ?? ''} style={{ width: 'auto' }} aria-label="Spec"
+                      onChange={(e) => {
+                        const sp = specsOf(c.class).find((x) => x.id === e.target.value);
+                        updateCharacter(c.id, sp ? { spec: sp.id, role: sp.role } : { spec: null });
+                      }}>
+                      <option value="">Spec…</option>
+                      {specsOf(c.class).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                    </select>
+                  )}
+                  {c.spec && specsOf(c.class).some((sp) => sp.id === c.spec) ? (
+                    <span className="badge" title="Set by the spec">{ROLES[c.role]?.icon} {ROLES[c.role]?.label}</span>
+                  ) : (
+                    <select value={c.role ?? 'dps'} onChange={(e) => updateCharacter(c.id, { role: e.target.value })} style={{ width: 'auto' }} aria-label="Role">
+                      {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
+                    </select>
+                  )}
                   {!c.is_main && <button className="btn ghost small" onClick={() => makeMain(c.id)}>Make main</button>}
                   <button className="btn danger small" onClick={() => deleteCharacter(c.id, c.name)}>Delete</button>
                 </div>
@@ -174,7 +189,7 @@ export default function RosterPage() {
               </div>
               <div>
                 <label htmlFor="class">Class</label>
-                <select id="class" value={form.class} onChange={set('class')}>
+                <select id="class" value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value, spec: '' }))}>
                   {CLASS_NAMES.map((cl) => <option key={cl}>{cl}</option>)}
                 </select>
               </div>
@@ -183,12 +198,6 @@ export default function RosterPage() {
                 <select id="race" value={form.race} onChange={set('race')}>
                   <option value="">—</option>
                   {RACES.map((r) => <option key={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="role">Role</label>
-                <select id="role" value={form.role} onChange={set('role')}>
-                  {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
                 </select>
               </div>
               {specsOf(form.class).length > 0 && (
@@ -201,6 +210,12 @@ export default function RosterPage() {
                   </select>
                 </div>
               )}
+              <div>
+                <label htmlFor="role">Role{form.spec ? ' (from spec)' : ''}</label>
+                <select id="role" value={form.role} onChange={set('role')} disabled={!!form.spec}>
+                  {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
+                </select>
+              </div>
               <div>
                 <label htmlFor="level">Level</label>
                 <input id="level" type="number" min={1} max={MAX_LEVEL} value={form.level} onChange={set('level')} />

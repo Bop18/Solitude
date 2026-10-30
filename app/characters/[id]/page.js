@@ -206,7 +206,7 @@ export default function CharacterPage() {
             </div>
             <div>
               <label htmlFor="eclass">Class</label>
-              <select id="eclass" value={editForm.class} onChange={setField('class')}>
+              <select id="eclass" value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value, spec: '' }))}>
                 {!CLASS_NAMES.includes(editForm.class) && <option>{editForm.class}</option>}
                 {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
               </select>
@@ -219,12 +219,6 @@ export default function CharacterPage() {
                 {RACES.map((r) => <option key={r}>{r}</option>)}
               </select>
             </div>
-            <div>
-              <label htmlFor="erole">Role</label>
-              <select id="erole" value={editForm.role} onChange={setField('role')}>
-                {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
-              </select>
-            </div>
             {specsOf(editForm.class).length > 0 && (
               <div>
                 <label htmlFor="espec">Spec</label>
@@ -235,6 +229,12 @@ export default function CharacterPage() {
                 </select>
               </div>
             )}
+            <div>
+              <label htmlFor="erole">Role{editForm.spec ? ' (from spec)' : ''}</label>
+              <select id="erole" value={editForm.role} onChange={setField('role')} disabled={!!editForm.spec}>
+                {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
+              </select>
+            </div>
             <div><label htmlFor="elevel">Level</label><input id="elevel" type="number" min={1} max={MAX_LEVEL} value={editForm.level} onChange={setField('level')} /></div>
           </div>
           <label className="checkbox"><input type="checkbox" checked={editForm.is_main} onChange={setField('is_main')} /> This is my main</label>
