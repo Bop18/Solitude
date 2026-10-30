@@ -9,7 +9,7 @@ import LevelBar from '@/components/LevelBar';
 import { timeAgo } from '@/components/ActivityFeed';
 import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
 
-const EMPTY_FORM = { name: '', surname: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', spec: '', level: 1, is_main: false };
+const EMPTY_FORM = { name: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', spec: '', level: 1, is_main: false };
 
 // Synced from the game in the last 2 weeks? Then the level updates by itself.
 const isSynced = (c) => c.synced_at && Date.now() - new Date(c.synced_at).getTime() < 14 * 86400000;
@@ -45,7 +45,6 @@ export default function RosterPage() {
     const { error } = await supabase.from('characters').insert({
       ...form,
       name: form.name.trim(),
-      surname: form.surname.trim() || null,
       realm: form.realm.trim() || null,
       race: form.race || null,
       spec: specsOf(form.class).length && form.spec ? form.spec : null,
@@ -103,7 +102,7 @@ export default function RosterPage() {
                     <td>
                       <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>
                       {c.is_main && <span className="badge gold" style={{ marginLeft: 6 }}>Main</span>}
-                      {(c.surname || c.realm) && <div className="muted small">{[c.surname, c.realm].filter(Boolean).join(' · ')}</div>}
+                      {c.realm && <div className="muted small">{c.realm}</div>}
                     </td>
                     <td className="muted">{c.profiles?.display_name}</td>
                     <td>{c.race ? `${c.race} ` : ''}{c.class}</td>
@@ -167,10 +166,6 @@ export default function RosterPage() {
               <div>
                 <label htmlFor="cname">Name</label>
                 <input id="cname" required value={form.name} onChange={set('name')} />
-              </div>
-              <div>
-                <label htmlFor="surname">Surname</label>
-                <input id="surname" value={form.surname} onChange={set('surname')} placeholder="Your character's second name" />
               </div>
               <div>
                 <label htmlFor="realm">Ruleset</label>

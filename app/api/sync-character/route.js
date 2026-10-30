@@ -52,11 +52,9 @@ function realmCandidates(typed, realms) {
   return out.slice(0, 3);
 }
 
-/** Name spellings to try: "shiv", then with the WoW: Forever surname in a few forms. */
-function nameCandidates(name, surname) {
-  const first = name.trim().toLowerCase();
-  const last = surname?.trim().toLowerCase();
-  return last ? [first, `${first}-${last}`, `${first}${last}`, `${first} ${last}`] : [first];
+/** Name spellings to try (lower case, as Blizzard's API wants). */
+function nameCandidates(name) {
+  return [name.trim().toLowerCase()];
 }
 
 let cachedToken = null; // { token, expires }
@@ -123,7 +121,7 @@ export async function POST(request) {
       const realms = await realmsFor(ns, region, headers);
       const query = `?namespace=${ns}-${region}&locale=en_GB`;
       for (const realm of realmCandidates(character.realm, realms)) {
-        for (const who of nameCandidates(character.name, character.surname)) {
+        for (const who of nameCandidates(character.name)) {
           const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realm)}/${encodeURIComponent(who)}`;
           tried.push(`${ns}/${realm}/${who}`);
           profileRes = await fetch(base + query, { headers, cache: 'no-store' });
@@ -137,7 +135,7 @@ export async function POST(request) {
 
     if (!used && lastStatus === 404) {
       return json({
-        error: `Blizzard couldn't find ${character.name}${character.surname ? ' ' + character.surname : ''} on ${character.realm} (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once in game. Blizzard only updates profiles when you log out.`,
+        error: `Blizzard couldn't find ${character.name} on ${character.realm} (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once in game. Blizzard only updates profiles when you log out.`,
         tried: tried.slice(0, 20),
       }, 404);
     }

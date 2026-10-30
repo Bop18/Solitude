@@ -14,7 +14,7 @@ import DungeonGuide from '@/components/DungeonGuide';
 import RouteEditor from '@/components/RouteEditor';
 import { CLASS_NAMES, ITEM_SLOTS, QUALITY, PRIORITY, classColor } from '@/lib/wow';
 import { bestFor, upgradeFor, statSummary, spreadAcrossSlots, specsFor } from '@/lib/itemScore';
-import { specsOf } from '@/lib/specs';
+import { specsOf, specsMatter } from '@/lib/specs';
 
 const EMPTY_ITEM = { name: '', boss: '', slot: '', item_type: '', quality: 'rare', classes: [], link: '', notes: '' };
 const TRASH = 'Trash & other drops';
@@ -270,7 +270,7 @@ export default function DungeonPage() {
             <option value="">All classes</option>
             {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
           </select>
-          {specsOf(classFilter).length > 0 && (
+          {specsMatter(classFilter) && (
             <select id="sf" aria-label="Spec" value={specFilter} onChange={(e) => setSpecFilter(e.target.value)} style={{ width: 'auto' }}>
               <option value="">All specs</option>
               {specsOf(classFilter).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
@@ -333,7 +333,7 @@ export default function DungeonPage() {
                           <div className="chips">
                             {best.slice(0, 5).map((c) => {
                               // Only some specs want it? Say which (e.g. "Paladin · Holy")
-                              const all = specsOf(c);
+                              const all = specsMatter(c) ? specsOf(c) : [];
                               const fit = all.length && item.game_id ? specsFor(item, c) : [];
                               const label = fit.length && fit.length < all.length
                                 ? all.filter((sp) => fit.includes(sp.id)).map((sp) => sp.short).join('/')

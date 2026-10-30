@@ -1,8 +1,5 @@
--- Solitude update 10: WoW: Forever (no realms, first name + surname)
+-- Solitude update 10: WoW: Forever (rulesets instead of realms)
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run (choose "Run without RLS").
-
--- Characters can have a surname (WoW: Forever's second name)
-alter table public.characters add column if not exists surname text;
 
 -- The companion upload now matches characters by name even if the realm/ruleset text differs,
 -- and fills in the ruleset the game reports.

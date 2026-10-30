@@ -139,7 +139,7 @@ export default function CharacterPage() {
   // ---------- Edit character ----------
   function startEdit() {
     setEditForm({
-      name: char.name, surname: char.surname ?? '', realm: char.realm ?? '', class: char.class, race: char.race ?? '',
+      name: char.name, realm: char.realm ?? '', class: char.class, race: char.race ?? '',
       role: char.role ?? 'dps', spec: char.spec ?? '', level: char.level, is_main: char.is_main,
     });
   }
@@ -157,7 +157,6 @@ export default function CharacterPage() {
       .from('characters')
       .update({
         name: editForm.name.trim(),
-        surname: editForm.surname.trim() || null,
         realm: editForm.realm.trim() || null,
         class: editForm.class,
         race: editForm.race || null,
@@ -191,7 +190,7 @@ export default function CharacterPage() {
     <>
       <p><Link href="/roster">← Roster</Link></p>
       <div className="row spread">
-        <h1 style={{ color: classColor(char.class) }}>{char.name}{char.surname ? ` ${char.surname}` : ''}</h1>
+        <h1 style={{ color: classColor(char.class) }}>{char.name}</h1>
         {isMine && !editForm && <button className="btn ghost small" onClick={startEdit}>✎ Edit character</button>}
       </div>
 
@@ -200,7 +199,6 @@ export default function CharacterPage() {
           <h2>Edit character</h2>
           <div className="form-grid">
             <div><label htmlFor="ename">Name</label><input id="ename" required value={editForm.name} onChange={setField('name')} /></div>
-            <div><label htmlFor="esurname">Surname</label><input id="esurname" value={editForm.surname} onChange={setField('surname')} placeholder="Second name" /></div>
             <div>
               <label htmlFor="erealm">Ruleset</label>
               <input id="erealm" list="erulesets" value={editForm.realm} onChange={setField('realm')} placeholder="Normal, PvP, RP…" />
