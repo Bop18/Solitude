@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { specsOf } from '@/lib/specs';
+import { itemsForLevels, loadDungeons } from '@/lib/suggest';
 import { useAuth } from '@/components/AuthProvider';
 import ItemName from '@/components/ItemName';
 import ItemSearch from '@/components/ItemSearch';
@@ -54,14 +56,11 @@ export default function CharacterPage() {
     // Dungeon loot around this character's level, for "Upgrades to look for"
     if (c.data) {
       const lvl = c.data.level;
-      const { data: near } = await supabase
-        .from('items')
-        .select('*, dungeons(id, name)')
-        .not('dungeon_id', 'is', null)
-        .lte('req_level', lvl + 2)
-        .gte('req_level', Math.max(1, lvl - 12))
-        .limit(2000);
-      setNearby(near ?? []);
+      const [near, dungeons] = await Promise.all([itemsForLevels(Math.max(1, lvl - 2), lvl), loadDungeons()]);
+      const byId = Object.fromEntries(dungeons.map((d) => [d.id, { id: d.id, name: d.name }]));
+      setNearby(near
+        .filter((i) => i.req_level == null || (i.req_level <= lvl + 2 && i.req_level >= lvl - 12))
+        .map((i) => ({ ...i, dungeons: byId[i.dungeon_id] })));
     }
     setLoaded(true);
   }, [id]);
@@ -140,8 +139,8 @@ export default function CharacterPage() {
   // ---------- Edit character ----------
   function startEdit() {
     setEditForm({
-      name: char.name, surname: char.surname ?? '', realm: char.realm ?? '', class: char.class, race: char.race ?? '',
-      role: char.role ?? 'dps', level: char.level, is_main: char.is_main,
+      name: char.name, realm: char.realm ?? '', class: char.class, race: char.race ?? '',
+      role: char.role ?? 'dps', spec: char.spec ?? '', level: char.level, is_main: char.is_main,
     });
   }
   const setField = (field) => (e) =>
@@ -158,11 +157,11 @@ export default function CharacterPage() {
       .from('characters')
       .update({
         name: editForm.name.trim(),
-        surname: editForm.surname.trim() || null,
         realm: editForm.realm.trim() || null,
         class: editForm.class,
         race: editForm.race || null,
         role: editForm.role,
+        spec: specsOf(editForm.class).length && editForm.spec ? editForm.spec : null,
         level: Math.min(MAX_LEVEL, Math.max(1, Number(editForm.level) || 1)),
         is_main: editForm.is_main,
         updated_at: new Date().toISOString(),
@@ -191,7 +190,7 @@ export default function CharacterPage() {
     <>
       <p><Link href="/roster">← Roster</Link></p>
       <div className="row spread">
-        <h1 style={{ color: classColor(char.class) }}>{char.name}{char.surname ? ` ${char.surname}` : ''}</h1>
+        <h1 style={{ color: classColor(char.class) }}>{char.name}</h1>
         {isMine && !editForm && <button className="btn ghost small" onClick={startEdit}>✎ Edit character</button>}
       </div>
 
@@ -200,7 +199,6 @@ export default function CharacterPage() {
           <h2>Edit character</h2>
           <div className="form-grid">
             <div><label htmlFor="ename">Name</label><input id="ename" required value={editForm.name} onChange={setField('name')} /></div>
-            <div><label htmlFor="esurname">Surname</label><input id="esurname" value={editForm.surname} onChange={setField('surname')} placeholder="Second name" /></div>
             <div>
               <label htmlFor="erealm">Ruleset</label>
               <input id="erealm" list="erulesets" value={editForm.realm} onChange={setField('realm')} placeholder="Normal, PvP, RP…" />
@@ -208,7 +206,7 @@ export default function CharacterPage() {
             </div>
             <div>
               <label htmlFor="eclass">Class</label>
-              <select id="eclass" value={editForm.class} onChange={setField('class')}>
+              <select id="eclass" value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value, spec: '' }))}>
                 {!CLASS_NAMES.includes(editForm.class) && <option>{editForm.class}</option>}
                 {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
               </select>
@@ -221,9 +219,19 @@ export default function CharacterPage() {
                 {RACES.map((r) => <option key={r}>{r}</option>)}
               </select>
             </div>
+            {specsOf(editForm.class).length > 0 && (
+              <div>
+                <label htmlFor="espec">Spec</label>
+                <select id="espec" value={editForm.spec}
+                  onChange={(e) => { const sp = specsOf(editForm.class).find((x) => x.id === e.target.value); setEditForm((f) => ({ ...f, spec: e.target.value, role: sp?.role ?? f.role })); }}>
+                  <option value="">Not sure yet</option>
+                  {specsOf(editForm.class).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                </select>
+              </div>
+            )}
             <div>
-              <label htmlFor="erole">Role</label>
-              <select id="erole" value={editForm.role} onChange={setField('role')}>
+              <label htmlFor="erole">Role{editForm.spec ? ' (from spec)' : ''}</label>
+              <select id="erole" value={editForm.role} onChange={setField('role')} disabled={!!editForm.spec}>
                 {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
               </select>
             </div>
@@ -241,7 +249,7 @@ export default function CharacterPage() {
       )}
 
       <p className="muted">
-        {char.race ? `${char.race} ` : ''}{char.class}
+        {char.race ? `${char.race} ` : ''}{char.spec ? `${specsOf(char.class).find((x) => x.id === char.spec)?.name ?? ''} ` : ''}{char.class}
         {char.role ? ` · ${ROLES[char.role].label}` : ''}
         {char.realm ? ` · ${char.realm}` : ''} · played by {char.profiles?.display_name}
       </p>

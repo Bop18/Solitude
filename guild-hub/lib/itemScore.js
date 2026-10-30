@@ -11,6 +11,7 @@
 // ============================================================
 
 import { CLASS_NAMES } from './wow';
+import { SPECS, specProfile, specOf } from './specs';
 
 // ---------- What each class can equip ----------
 
@@ -193,6 +194,86 @@ function rankClasses(scored, item) {
     .map((x) => x.cls);
 }
 
+
+// ---------- Specs ("subclasses") ----------
+
+// Rough "stat budget" cost of each stat, so different stats can be compared.
+// crit/hit/dodge/parry/block are per 1%.
+const COST = { str: 1, agi: 1, sta: 1, int: 1, spi: 1, sp: 0.85, ap: 0.5, rap: 0.4, feralAp: 0.5, mp5: 2.5, hp5: 2.5, def: 1, blockValue: 0.15, crit: 14, hit: 10, dodge: 12, parry: 12, block: 5 };
+
+function statAmounts(item) {
+  const s = item.stats ?? {};
+  return {
+    str: s.str, agi: s.agi, sta: s.sta, int: s.int, spi: s.spi, sp: s.sp, ap: s.ap, rap: s.rap, feralAp: s.feralAp,
+    mp5: s.mp5, hp5: s.hp5, def: s.def, blockValue: s.blockValue,
+    crit: critPct(s.crit), hit: hitPct(s.hit), dodge: pct(s.dodge, 12), parry: pct(s.parry, 20), block: pct(s.block, 5),
+  };
+}
+
+function isCasterItem(s) { return (s.int || s.sp || s.mp5 || s.spi) && !(s.str || s.agi || s.ap || s.rap); }
+function isPhysicalItem(s) { return (s.str || s.agi || s.ap || s.rap) && !(s.int || s.sp || s.mp5); }
+
+/**
+ * How well an item suits a spec.
+ * Returns { fit: 0..1 (share of the item's stats the spec actually uses), value: spec score }.
+ */
+export function specValue(cls, specId, item) {
+  const spec = specProfile(cls, specId);
+  if (!spec || !item) return { fit: 0, value: 0 };
+  const s = item.stats ?? {};
+  const amounts = statAmounts(item);
+  // Spell crit/hit is no use to physical specs and the other way round
+  // (Crit/hit on an item with no caster stats is the physical kind.)
+  const wrongCrit = (spec.type === 'physical' && isCasterItem(s)) || (spec.type === 'caster' && !isCasterItem(s));
+  let budget = 0;
+  let useful = 0;
+  for (const [k, v] of Object.entries(amounts)) {
+    if (!v) continue;
+    const cost = v * (COST[k] ?? 1);
+    budget += cost;
+    const r = (wrongCrit && (k === 'crit' || k === 'hit')) ? 0 : spec.rel[k] ?? 0;
+    useful += cost * r;
+  }
+  // Weapon damage
+  let dpsValue = 0;
+  if (item.dps) {
+    const t = item.item_type;
+    const kind = t === 'Wand' ? 'wand' : ['Bow', 'Gun', 'Crossbow', 'Thrown'].includes(t) ? 'ranged' : 'melee';
+    if (spec.weapon === kind) dpsValue = item.dps * (kind === 'melee' ? 4.5 : kind === 'ranged' ? 5 : 1.5);
+    else if (kind === 'melee' && spec.type === 'physical' && spec.weapon === 'ranged') dpsValue = item.dps * 0.8; // hunters' melee weapon
+  }
+  // Tanks value armour; everyone a little
+  const armorValue = (s.armor ?? 0) * (spec.role === 'tank' ? 0.04 : 0.005);
+  let fit;
+  if (budget > 0) fit = useful / budget;
+  else fit = dpsValue > 0 || isArmorPiece(item) ? 1 : 0; // plain weapon/armour: let damage/armour type decide
+  let value = useful + dpsValue + armorValue;
+  if (isArmorPiece(item)) {
+    const ideal = idealArmor(cls, item.req_level ?? 60);
+    if (ARMOR_RANK[item.item_type] < ARMOR_RANK[ideal]) value *= 0.8;
+  }
+  return { fit, value: Math.round(value * 10) / 10 };
+}
+
+const FIT_NEEDED = 0.55; // at least ~half the item's stats must be ones the spec uses
+
+/** Which of a class's specs this item suits (ids). [] = none; classes without specs return ['all'] or []. */
+export function specsFor(item, cls) {
+  if (!canUse(cls, item, Math.max(item.req_level ?? 60, 40))) return [];
+  const list = SPECS[cls] ?? [{ id: 'all' }];
+  const fits = list.map((sp) => ({ id: sp.id, fit: specValue(cls, sp.id, item).fit }));
+  const good = fits.filter((f) => f.fit >= FIT_NEEDED);
+  if (good.length) return good.map((f) => f.id);
+  // Hybrid gear (e.g. Str + Int plate) that no spec loves: give it to the closest fit(s)
+  const max = Math.max(...fits.map((f) => f.fit));
+  return max >= 0.35 ? fits.filter((f) => f.fit >= max * 0.9).map((f) => f.id) : [];
+}
+
+/** Does the item suit this spec? (used by the spec filter and upgrades) */
+export function suitsSpec(item, cls, specId) {
+  return specsFor(item, cls).includes(specId);
+}
+
 // ---------- Upgrades ----------
 
 // Which gear slots an item would go into
@@ -221,10 +302,12 @@ export function gearSlotsFor(item, cls) {
 export function upgradeFor(character, item, gear = {}) {
   const cls = character.class;
   if (!canUse(cls, item, character.level)) return null;
-  // Only suggest items that are actually meant for this class
-  // (stops e.g. a Warrior being told to take a caster staff for its damage)
-  if (!bestFor(item).includes(cls)) return null;
-  const newScore = itemScore(cls, item);
+  // Known spec (picked, or clear from their role)? Judge by what that spec wants;
+  // otherwise only suggest items that are actually meant for this class.
+  const spec = SPECS[cls] ? specOf(character) : null;
+  if (spec ? !suitsSpec(item, cls, spec) : !bestFor(item).includes(cls)) return null;
+  const score = (it) => (spec ? specValue(cls, spec, it).value : itemScore(cls, it));
+  const newScore = score(item);
   if (newScore <= 0) return null;
 
   // Already wearing it?
@@ -236,11 +319,11 @@ export function upgradeFor(character, item, gear = {}) {
   for (const sl of slots) {
     const row = gear[sl];
     let current = row?.items ?? null;
-    let currentScore = current ? itemScore(cls, current) : 0;
+    let currentScore = current ? score(current) : 0;
 
     // A two-hander replaces main hand + off hand
     if (item.slot === 'Two-Hand' && gear['Off Hand']?.items) {
-      currentScore += itemScore(cls, gear['Off Hand'].items);
+      currentScore += score(gear['Off Hand'].items);
     }
     // A one-hander can't replace a two-hander on its own; compare against half of it
     if (item.slot !== 'Two-Hand' && sl === 'Main Hand' && current?.slot === 'Two-Hand') {

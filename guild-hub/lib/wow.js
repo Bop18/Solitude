@@ -21,6 +21,7 @@ export const CLASS_NAMES = Object.keys(CLASSES);
 export const RACES = [
   'Human', 'Dwarf', 'Night Elf', 'Gnome',
   'Orc', 'Undead', 'Tauren', 'Troll',
+  'Skyborne', // WoW: Forever's elves (Alliance: High Order, Horde: Windshaper)
 ];
 
 export const ROLES = {
@@ -92,5 +93,3 @@ export function classColor(className) {
 // (For Classic you can still type a realm name in the same box.)
 export const RULESETS = ['Normal', 'PvP', 'RP', 'RP-PvP', 'Hardcore'];
 
-/** "Shiv Blackmoor" when there's a surname */
-export const fullName = (c) => (c?.surname ? `${c.name} ${c.surname}` : c?.name ?? '');

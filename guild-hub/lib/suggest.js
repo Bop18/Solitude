@@ -5,6 +5,7 @@
 
 import { supabase } from './supabase';
 import { upgradeFor } from './itemScore';
+import { cached } from './cache';
 
 /** Supabase returns at most 1000 rows per request; page through when needed. */
 export async function fetchAll(build, { pageSize = 1000, maxPages = 4 } = {}) {
@@ -27,15 +28,52 @@ export function mainsByOwner(characters) {
   return out;
 }
 
+/** All dungeons and raids (rarely change: cached for 10 minutes). */
+export function loadDungeons() {
+  return cached('dungeons', async () => {
+    const { data, error } = await supabase.from('dungeons').select('*').order('min_level', { nullsFirst: false });
+    if (error) throw error;
+    return data ?? [];
+  }, 600_000);
+}
+
+/** Everyone's characters with their worn gear (shared by the dashboard cards). */
+export function loadCharactersWithGear() {
+  return cached('chars:gear', async () => {
+    const { data, error } = await supabase
+      .from('characters')
+      .select('id, name, class, level, role, owner, is_main, synced_at, character_gear(slot, item_name, items(*))');
+    if (error) throw error;
+    return data ?? [];
+  }, 120_000);
+}
+
+// Loot per dungeon, fetched once per dungeon and then reused.
+const lootByDungeon = new Map(); // dungeon id → Promise<items[]>
+
+/** Loot for these dungeons, only fetching the ones we haven't loaded yet. */
+export async function itemsForDungeons(ids) {
+  const missing = ids.filter((id) => !lootByDungeon.has(id));
+  if (missing.length) {
+    const all = fetchAll(() => supabase.from('items').select('*').in('dungeon_id', missing).order('id'), { maxPages: 10 });
+    for (const id of missing) lootByDungeon.set(id, all.then((rows) => rows.filter((r) => r.dungeon_id === id)));
+    all.catch(() => missing.forEach((id) => lootByDungeon.delete(id)));
+  }
+  return (await Promise.all(ids.map((id) => lootByDungeon.get(id)))).flat();
+}
+
+/** Dungeons a group in this level range would run (raids only at 60). */
+export function dungeonsForLevels(dungeons, minLevel, maxLevel) {
+  return dungeons.filter((d) =>
+    (!d.min_level || d.min_level <= maxLevel + 3) &&
+    (!d.max_level || d.max_level >= minLevel - 4 || (maxLevel >= 58 && d.max_level >= 60)));
+}
+
 /** Dungeon loot that could matter for characters in this level range. */
 export async function itemsForLevels(minLevel, maxLevel) {
-  return fetchAll(() =>
-    supabase
-      .from('items')
-      .select('*')
-      .not('dungeon_id', 'is', null)
-      .gte('req_level', Math.max(1, minLevel - 10))
-      .lte('req_level', maxLevel + 2));
+  const dungeons = dungeonsForLevels(await loadDungeons(), minLevel, maxLevel);
+  const items = await itemsForDungeons(dungeons.map((d) => d.id));
+  return items.filter((i) => !i.req_level || (i.req_level >= minLevel - 10 && i.req_level <= maxLevel + 2));
 }
 
 /**

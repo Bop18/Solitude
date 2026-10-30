@@ -40,10 +40,10 @@ export default function RootLayout({ children }) {
           <Shell>{children}</Shell>
         </AuthProvider>
         {/* Hover an item name to see its full in-game tooltip */}
-        <Script id="wowhead-config" strategy="afterInteractive">
+        <Script id="wowhead-config" strategy="lazyOnload">
           {`window.whTooltips = { colorLinks: false, iconizeLinks: false, renameLinks: false };`}
         </Script>
-        <Script src="https://wow.zamimg.com/js/tooltips.js" strategy="afterInteractive" />
+        <Script src="https://wow.zamimg.com/js/tooltips.js" strategy="lazyOnload" />
       </body>
     </html>
   );

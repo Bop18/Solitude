@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { specsOf } from '@/lib/specs';
 import { useAuth } from '@/components/AuthProvider';
 import LevelBar from '@/components/LevelBar';
 import { timeAgo } from '@/components/ActivityFeed';
 import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
 
-const EMPTY_FORM = { name: '', surname: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', level: 1, is_main: false };
+const EMPTY_FORM = { name: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', spec: '', level: 1, is_main: false };
 
 // Synced from the game in the last 2 weeks? Then the level updates by itself.
 const isSynced = (c) => c.synced_at && Date.now() - new Date(c.synced_at).getTime() < 14 * 86400000;
@@ -44,9 +45,9 @@ export default function RosterPage() {
     const { error } = await supabase.from('characters').insert({
       ...form,
       name: form.name.trim(),
-      surname: form.surname.trim() || null,
       realm: form.realm.trim() || null,
       race: form.race || null,
+      spec: specsOf(form.class).length && form.spec ? form.spec : null,
       level: Number(form.level),
     });
     if (error) setError(error.message);
@@ -93,7 +94,7 @@ export default function RosterPage() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Character</th><th>Player</th><th>Class</th><th>Role</th><th>Level</th></tr>
+                <tr><th>Character</th><th>Player</th><th>Class</th><th>Spec</th><th>Role</th><th>Level</th></tr>
               </thead>
               <tbody>
                 {characters.map((c) => (
@@ -101,10 +102,11 @@ export default function RosterPage() {
                     <td>
                       <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>
                       {c.is_main && <span className="badge gold" style={{ marginLeft: 6 }}>Main</span>}
-                      {(c.surname || c.realm) && <div className="muted small">{[c.surname, c.realm].filter(Boolean).join(' · ')}</div>}
+                      {c.realm && <div className="muted small">{c.realm}</div>}
                     </td>
                     <td className="muted">{c.profiles?.display_name}</td>
                     <td>{c.race ? `${c.race} ` : ''}{c.class}</td>
+                    <td>{specsOf(c.class).find((sp) => sp.id === c.spec)?.name ?? <span className="muted">—</span>}</td>
                     <td>{c.role ? `${ROLES[c.role].icon} ${ROLES[c.role].label}` : '—'}</td>
                     <td><LevelBar level={c.level} className={c.class} /></td>
                   </tr>
@@ -147,9 +149,23 @@ export default function RosterPage() {
                       <button className="btn small" onClick={() => updateCharacter(c.id, { level: Math.min(MAX_LEVEL, c.level + 1) })} aria-label="Level up">Ding! +1</button>
                     </>
                   )}
-                  <select value={c.role ?? 'dps'} onChange={(e) => updateCharacter(c.id, { role: e.target.value })} style={{ width: 'auto' }} aria-label="Role">
-                    {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
-                  </select>
+                  {specsOf(c.class).length > 0 && (
+                    <select value={c.spec ?? ''} style={{ width: 'auto' }} aria-label="Spec"
+                      onChange={(e) => {
+                        const sp = specsOf(c.class).find((x) => x.id === e.target.value);
+                        updateCharacter(c.id, sp ? { spec: sp.id, role: sp.role } : { spec: null });
+                      }}>
+                      <option value="">Spec…</option>
+                      {specsOf(c.class).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                    </select>
+                  )}
+                  {c.spec && specsOf(c.class).some((sp) => sp.id === c.spec) ? (
+                    <span className="badge" title="Set by the spec">{ROLES[c.role]?.icon} {ROLES[c.role]?.label}</span>
+                  ) : (
+                    <select value={c.role ?? 'dps'} onChange={(e) => updateCharacter(c.id, { role: e.target.value })} style={{ width: 'auto' }} aria-label="Role">
+                      {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
+                    </select>
+                  )}
                   {!c.is_main && <button className="btn ghost small" onClick={() => makeMain(c.id)}>Make main</button>}
                   <button className="btn danger small" onClick={() => deleteCharacter(c.id, c.name)}>Delete</button>
                 </div>
@@ -167,17 +183,13 @@ export default function RosterPage() {
                 <input id="cname" required value={form.name} onChange={set('name')} />
               </div>
               <div>
-                <label htmlFor="surname">Surname</label>
-                <input id="surname" value={form.surname} onChange={set('surname')} placeholder="Your character's second name" />
-              </div>
-              <div>
                 <label htmlFor="realm">Ruleset</label>
                 <input id="realm" list="rulesets" value={form.realm} onChange={set('realm')} placeholder="Normal, PvP, RP…" />
                 <datalist id="rulesets">{RULESETS.map((r) => <option key={r} value={r} />)}</datalist>
               </div>
               <div>
                 <label htmlFor="class">Class</label>
-                <select id="class" value={form.class} onChange={set('class')}>
+                <select id="class" value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value, spec: '' }))}>
                   {CLASS_NAMES.map((cl) => <option key={cl}>{cl}</option>)}
                 </select>
               </div>
@@ -188,9 +200,19 @@ export default function RosterPage() {
                   {RACES.map((r) => <option key={r}>{r}</option>)}
                 </select>
               </div>
+              {specsOf(form.class).length > 0 && (
+                <div>
+                  <label htmlFor="spec">Spec</label>
+                  <select id="spec" value={form.spec}
+                    onChange={(e) => { const sp = specsOf(form.class).find((x) => x.id === e.target.value); setForm((f) => ({ ...f, spec: e.target.value, role: sp?.role ?? f.role })); }}>
+                    <option value="">Not sure yet</option>
+                    {specsOf(form.class).map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
-                <label htmlFor="role">Role</label>
-                <select id="role" value={form.role} onChange={set('role')}>
+                <label htmlFor="role">Role{form.spec ? ' (from spec)' : ''}</label>
+                <select id="role" value={form.role} onChange={set('role')} disabled={!!form.spec}>
                   {Object.entries(ROLES).map(([key, r]) => <option key={key} value={key}>{r.label}</option>)}
                 </select>
               </div>
