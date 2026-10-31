@@ -34,7 +34,21 @@ export default function RosterPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const mine = characters.filter((c) => c.owner === userId);
+  // Classic (WoW: Forever + Classic) first; Retail on its own tab so the two don't mix
+  const [game, setGame] = useState('classic');
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('game') === 'retail') setGame('retail');
+  }, []);
+  const inTab = (c) => (game === 'retail' ? c.game === 'retail' : c.game !== 'retail');
+  const shown = characters.filter(inTab);
+  const mine = shown.filter((c) => c.owner === userId);
+  const pickGame = (g) => (e) => {
+    e.preventDefault();
+    setGame(g);
+    window.history.replaceState(null, '', g === 'retail' ? '?game=retail' : window.location.pathname);
+    // New characters default to the tab you're on
+    setForm((f) => ({ ...f, game: g === 'retail' ? 'retail' : 'forever', realm: g === 'retail' ? '' : 'Normal', class: 'Warrior', race: '', level: 1 }));
+  };
 
   async function addCharacter(e) {
     e.preventDefault();
@@ -87,12 +101,16 @@ export default function RosterPage() {
   return (
     <>
       <h1>Roster</h1>
+      <nav className="tabs game-tabs">
+        <a href="#" className={game === 'classic' ? 'active' : ''} onClick={pickGame('classic')}>Classic</a>
+        <a href="#" className={game === 'retail' ? 'active' : ''} onClick={pickGame('retail')}>Retail</a>
+      </nav>
       {error && <p className="error">{error}</p>}
 
       <section className="panel">
         <h2>Everyone</h2>
-        {characters.length === 0 ? (
-          <p className="muted">No characters yet. Add yours below.</p>
+        {shown.length === 0 ? (
+          <p className="muted">{game === 'retail' ? 'No retail characters yet. Add one below (Game: Retail).' : 'No characters yet. Add yours below.'}</p>
         ) : (
           <div className="table-wrap">
             <table>
@@ -100,7 +118,7 @@ export default function RosterPage() {
                 <tr><th>Character</th><th>Player</th><th>Class</th><th>Spec</th><th>Role</th><th>Level</th></tr>
               </thead>
               <tbody>
-                {characters.map((c) => (
+                {shown.map((c) => (
                   <tr key={c.id}>
                     <td>
                       <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>

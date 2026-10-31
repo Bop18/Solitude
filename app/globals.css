@@ -617,3 +617,15 @@ h1 {
 .keep-btn.on { color: #f5c542; border-color: color-mix(in srgb, #f5c542 50%, var(--border)); background: color-mix(in srgb, #f5c542 12%, transparent); }
 .tabs a.star-tab { color: #e0b23a; font-size: 1.05rem; padding-left: 0.75rem; padding-right: 0.75rem; }
 .tabs a.star-tab.active { background: color-mix(in srgb, #f5c542 15%, transparent); color: #f5c542; }
+
+/* ---------- Game tabs + retail progress ---------- */
+.game-tabs { margin-bottom: 1.25rem; }
+.retail-table tr.clickable { cursor: pointer; }
+.retail-table tr.clickable:hover td { background: var(--accent-soft); }
+.retail-table tr.picked td { background: var(--accent-soft); }
+.retail-raid { margin: 0.6rem 0 1rem; }
+.retail-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
+.retail-mode { border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.8rem; background: var(--panel-2); }
+.boss-ticks { list-style: none; margin: 0.5rem 0 0; padding: 0; font-size: 0.85rem; color: var(--muted); }
+.boss-ticks li.done { color: var(--text); }
+.boss-ticks li.week { color: var(--ok); font-weight: 600; }
