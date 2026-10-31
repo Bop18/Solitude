@@ -60,8 +60,10 @@ export async function POST(request) {
 
   let body = {};
   try { body = await request.json(); } catch { /* no body */ }
-  let q = supabase.from('characters').select('*').eq('owner', userId); // '*': works before/after the "game" update
-  if (body.characterId) q = q.eq('id', Number(body.characterId));
+  // One character (anyone's: opened from their character page), or all of mine
+  const q = body.characterId
+    ? supabase.from('characters').select('*').eq('id', Number(body.characterId))
+    : supabase.from('characters').select('*').eq('owner', userId); // '*': works before/after the "game" update
   const { data: chars } = await q;
   if (!chars?.length) return json({ reports: [], searched: [], note: 'Add your characters on the Roster first.' });
 

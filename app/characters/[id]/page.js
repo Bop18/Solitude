@@ -13,6 +13,7 @@ import WantControl from '@/components/WantControl';
 import LevelBar from '@/components/LevelBar';
 import SyncGear from '@/components/SyncGear';
 import RetailCharacter from '@/components/RetailCharacter';
+import CharacterLogs from '@/components/CharacterLogs';
 import { timeAgo } from '@/components/ActivityFeed';
 import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, classColor, GAMES, gameOf, maxLevelFor, classesFor, racesFor } from '@/lib/wow';
 import GameRealmFields from '@/components/GameRealmFields';
@@ -422,6 +423,8 @@ export default function CharacterPage() {
         </div>
       </div>
       </>)}
+
+      <CharacterLogs character={char} />
     </>
   );
 }
