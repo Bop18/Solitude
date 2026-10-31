@@ -12,6 +12,7 @@ import ItemSearch from '@/components/ItemSearch';
 import WantControl from '@/components/WantControl';
 import LevelBar from '@/components/LevelBar';
 import SyncGear from '@/components/SyncGear';
+import RetailCharacter from '@/components/RetailCharacter';
 import { timeAgo } from '@/components/ActivityFeed';
 import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, classColor, GAMES, gameOf, maxLevelFor, classesFor, racesFor } from '@/lib/wow';
 import GameRealmFields from '@/components/GameRealmFields';
@@ -259,6 +260,7 @@ export default function CharacterPage() {
       <div style={{ maxWidth: 320, marginBottom: '1.25rem' }}><LevelBar level={char.level} className={char.class} max={maxLevelFor(char)} /></div>
       {error && <p className="error">{error}</p>}
 
+      {gameOf(char) === 'retail' ? <RetailCharacter character={char} /> : (<>
       {/* ---------- Upgrades to look for ---------- */}
       <section className="panel">
         <h2>Upgrades to look for</h2>
@@ -419,6 +421,7 @@ export default function CharacterPage() {
           </section>
         </div>
       </div>
+      </>)}
     </>
   );
 }

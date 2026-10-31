@@ -22,9 +22,10 @@ export default function AutoSync({ userId }) {
     set('autosync-at', String(Date.now()));
 
     (async () => {
-      const { data: chars } = await supabase.from('characters').select('id, realm, synced_at').eq('owner', userId);
+      const { data: chars } = await supabase.from('characters').select('*').eq('owner', userId);
       const cutoff = Date.now() - STALE_HOURS * 3600e3;
-      const due = (chars ?? []).filter((c) => c.realm && (!c.synced_at || new Date(c.synced_at).getTime() < cutoff));
+      // Retail gear is read live on its character page, so only sync WoW: Forever / Classic here
+      const due = (chars ?? []).filter((c) => c.game !== 'retail' && c.realm && (!c.synced_at || new Date(c.synced_at).getTime() < cutoff));
       if (!due.length) return;
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
