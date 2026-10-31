@@ -651,3 +651,5 @@ html { scroll-behavior: smooth; }
 .dungeon-card-people { display: flex; flex-wrap: wrap; gap: 0.2rem 0.7rem; font-size: 0.88rem; font-weight: 600; margin-top: 0.2rem; }
 .tonight-card, .tonight-panel { border-color: color-mix(in srgb, #f5c542 60%, var(--border)); box-shadow: 0 0 30px -14px #f5c542; }
 .loot-table tr.unneeded td { opacity: 0.75; }
+a.dungeon-card:hover { text-decoration: none; }
+.loot-view-bar { margin-bottom: 1rem; }

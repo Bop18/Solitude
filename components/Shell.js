@@ -17,7 +17,7 @@ const LINKS = [
   { href: '/events', label: 'Events' },
   { href: '/progress', label: 'Progress' },
   { href: '/dungeons', label: 'Dungeons' },
-  { href: '/loot', label: 'Loot' },
+  { href: '/loot/history', label: 'Loot' },
   { href: '/logs', label: 'Logs' },
 ];
 

@@ -70,7 +70,7 @@ export default function LootHistoryPage() {
 
   return (
     <>
-      <h1>Loot</h1>
+      <h1>Loot history</h1>
       <LootTabs />
       {error && <p className="error">{error}</p>}
 
