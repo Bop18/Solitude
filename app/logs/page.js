@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { clock } from '@/lib/wcl';
+import { clock, short } from '@/lib/wcl';
+import { classColor } from '@/lib/wow';
 
 export default function LogsPage() {
   const router = useRouter();
@@ -184,9 +185,10 @@ export default function LogsPage() {
         ) : (
           <div className="log-list">
             {shownLogs.map((l) => {
-              const bosses = l.data?.bosses ?? [];
-              const kills = bosses.filter((b) => b.kill).length;
-              const wipes = bosses.length - kills;
+              // Top DPS of the whole log
+              const topRow = l.data?.overall?.damage?.[0];
+              const topPlayer = topRow && (l.data.players ?? []).find((p) => p.id === topRow.id);
+              const topDps = topRow && l.data.overall.time ? (topRow.total / l.data.overall.time) * 1000 : null;
               return (
                 <Link key={l.id} href={`/logs/${l.id}`} className="log-row">
                   <div style={{ minWidth: 0 }}>
@@ -203,8 +205,13 @@ export default function LogsPage() {
                   <div className="row" style={{ flexWrap: 'nowrap' }}>
                     {l.data ? (
                       <>
-                        {kills > 0 && <span className="badge ok-badge">{kills} kill{kills === 1 ? '' : 's'}</span>}
-                        {wipes > 0 && <span className="badge">{wipes} wipe{wipes === 1 ? '' : 's'}</span>}
+                        {topPlayer && (
+                          <span className="top-dps" title="Most damage per second over the whole log">
+                            <span className="muted small">Top DPS</span>
+                            <strong style={{ color: classColor(topPlayer.class) }}>{topPlayer.name}</strong>
+                            {topDps != null && <span className="muted small">{short(topDps)}</span>}
+                          </span>
+                        )}
                       </>
                     ) : <span className="badge">Link only</span>}
                   </div>
