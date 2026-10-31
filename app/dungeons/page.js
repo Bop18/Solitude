@@ -37,7 +37,7 @@ export default function DungeonsPage() {
       const id = row.items?.dungeon_id;
       if (id) wanted[id] = (wanted[id] ?? 0) + 1;
     }
-    setDungeons(d.data.map((dg) => ({ ...dg, itemCount: (dg.items ?? []).length, wantedCount: wanted[dg.id] ?? 0 })));
+    setDungeons(d.data.filter((dg) => dg.game !== 'retail').map((dg) => ({ ...dg, itemCount: (dg.items ?? []).length, wantedCount: wanted[dg.id] ?? 0 })));
 
     const main = c.data.find((ch) => ch.is_main) ?? c.data.sort((a, b) => b.level - a.level)[0];
     setMyLevel(main?.level ?? null);
