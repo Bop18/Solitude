@@ -612,3 +612,6 @@ h1 {
 .meter-bar span { display: block; height: 100%; border-radius: 999px; opacity: 0.85; }
 .plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 .top-dps { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.25rem 0.7rem; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
+.keep-btn { width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 1.05rem; line-height: 1; cursor: pointer; flex: none; }
+.keep-btn:hover { color: var(--accent); border-color: var(--accent); }
+.keep-btn.on { color: #f5c542; border-color: color-mix(in srgb, #f5c542 50%, var(--border)); background: color-mix(in srgb, #f5c542 12%, transparent); }

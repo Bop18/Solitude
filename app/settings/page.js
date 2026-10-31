@@ -26,9 +26,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('characters').select('name, class, is_main, level').eq('owner', userId)
+    supabase.from('characters').select('*').eq('owner', userId)
       .then(({ data }) => {
-        const m = (data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0] ?? null;
+        const m = (data ?? []).filter((c) => c.game !== 'retail').sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0] ?? null;
         setMain(m);
         if (m) syncMainAccent(m.class);
       });

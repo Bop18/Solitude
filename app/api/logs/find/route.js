@@ -34,12 +34,14 @@ async function wclToken() {
   return cachedToken.token;
 }
 
-const QUERY = `query($name: String!, $server: String!, $region: String!) {
+// Up to 4 pages of 50 = the last 200 reports per character
+const QUERY = `query($name: String!, $server: String!, $region: String!, $page: Int!) {
   characterData { character(name: $name, serverSlug: $server, serverRegion: $region) {
     name
-    recentReports(limit: 50) { data { code title startTime endTime zone { name } } }
+    recentReports(limit: 50, page: $page) { data { code title startTime endTime zone { name } } }
   } }
 }`;
+const MAX_PAGES = 4;
 
 export async function POST(request) {
   if (!process.env.WCL_CLIENT_ID || !process.env.WCL_CLIENT_SECRET) {
@@ -58,14 +60,20 @@ export async function POST(request) {
 
   let body = {};
   try { body = await request.json(); } catch { /* no body */ }
-  let q = supabase.from('characters').select('id, name, realm').eq('owner', userId);
+  let q = supabase.from('characters').select('*').eq('owner', userId); // '*': works before/after the "game" update
   if (body.characterId) q = q.eq('id', Number(body.characterId));
   const { data: chars } = await q;
   if (!chars?.length) return json({ reports: [], searched: [], note: 'Add your characters on the Roster first.' });
 
   const region = (process.env.WCL_REGION || process.env.BLIZZARD_REGION || 'EU').toUpperCase();
-  const sites = (process.env.WCL_SITES || 'classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com')
-    .split(',').map((s) => s.trim()).filter(Boolean);
+  // Which Warcraft Logs sites to look on, by the character's game
+  const foreverSites = (process.env.WCL_SITES || 'classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com')
+    .split(',').map((x) => x.trim()).filter(Boolean);
+  const SITES = {
+    retail: ['www.warcraftlogs.com'],
+    classic: ['classic.warcraftlogs.com', 'fresh.warcraftlogs.com', 'sod.warcraftlogs.com'],
+    forever: foreverSites,
+  };
 
   const wcl = await wclToken();
   const found = new Map(); // code → report
@@ -99,6 +107,7 @@ export async function POST(request) {
     let hit = false;
     const problems = [];
     let server = realmsToTry[0];
+    const sites = SITES[c.game] ?? foreverSites;
     search:
     for (const realm of realmsToTry) for (const site of sites) {
       server = realm;
@@ -106,7 +115,7 @@ export async function POST(request) {
         const res = await fetch(`https://${site}/api/v2/client`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${wcl}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: QUERY, variables: { name: c.name, server, region } }),
+          body: JSON.stringify({ query: QUERY, variables: { name: c.name, server, region, page: 1 } }),
           cache: 'no-store',
         });
         const body = await res.json().catch(() => ({}));
@@ -119,7 +128,20 @@ export async function POST(request) {
           // Remember the realm that worked so next time is quicker
           await supabase.from('characters').update({ realm: pretty[realm] }).eq('id', c.id);
         }
-        const list = ch.recentReports?.data ?? [];
+        const list = [...(ch.recentReports?.data ?? [])];
+        // More pages?
+        for (let page = 2; page <= MAX_PAGES && list.length >= (page - 1) * 50; page++) {
+          const more = await fetch(`https://${site}/api/v2/client`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${wcl}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: QUERY, variables: { name: c.name, server, region, page } }),
+            cache: 'no-store',
+          }).then((r) => r.json()).catch(() => ({}));
+          const got = more?.data?.characterData?.character?.recentReports;
+          if (!got?.data?.length) break;
+          list.push(...got.data);
+          if (got.data.length < 50) break;
+        }
         details.push(`${c.name} found on ${site} (${server}, ${region}): ${list.length} report${list.length === 1 ? '' : 's'}.`);
         for (const r of list) {
           const prev = found.get(r.code);

@@ -1,4 +1,4 @@
-// POST /api/logs  { url, eventId? }
+// POST /api/logs  { url, eventId?, keep? }
 // Reads a Warcraft Logs report and saves a summary of it in our database,
 // so it's easy to read and kept even if the report is deleted later.
 //
@@ -115,6 +115,7 @@ export async function POST(request) {
       summary = await readReport(parsed.host, parsed.code);
     } catch (e) {
       if (!existing) warning = `Saved the link, but couldn't read the report: ${e.message}`;
+      else if (body.keep) warning = `Kept, but couldn't read the full report right now: ${e.message}`;
       else return json({ error: `Couldn't refresh the report: ${e.message}` }, 502);
     }
   } else {
@@ -131,6 +132,7 @@ export async function POST(request) {
       data: summary,
     }),
     ...(body.eventId ? { event_id: Number(body.eventId) } : {}),
+    ...(body.keep ? { kept: true } : {}),
     updated_at: new Date().toISOString(),
   };
 

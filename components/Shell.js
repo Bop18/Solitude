@@ -38,8 +38,8 @@ export default function Shell({ children }) {
   useEffect(() => {
     const id = session?.user?.id;
     if (!id) return;
-    supabase.from('characters').select('class, is_main, level').eq('owner', id).then(({ data }) => {
-      const main = (data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0];
+    supabase.from('characters').select('*').eq('owner', id).then(({ data }) => {
+      const main = (data ?? []).filter((c) => c.game !== 'retail').sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0];
       if (main) syncMainAccent(main.class);
     });
   }, [session?.user?.id]);

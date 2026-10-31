@@ -13,7 +13,8 @@ import WantControl from '@/components/WantControl';
 import LevelBar from '@/components/LevelBar';
 import SyncGear from '@/components/SyncGear';
 import { timeAgo } from '@/components/ActivityFeed';
-import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, CLASS_NAMES, RACES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
+import { GEAR_SLOTS, ITEM_SLOTS_FOR_GEAR, PRIORITY, ROLES, classColor, GAMES, gameOf, maxLevelFor, classesFor, racesFor } from '@/lib/wow';
+import GameRealmFields from '@/components/GameRealmFields';
 import { upgradeFor, statSummary, spreadAcrossSlots } from '@/lib/itemScore';
 
 function gainLabel(u) {
@@ -139,7 +140,7 @@ export default function CharacterPage() {
   // ---------- Edit character ----------
   function startEdit() {
     setEditForm({
-      name: char.name, realm: char.realm ?? '', class: char.class, race: char.race ?? '',
+      name: char.name, game: gameOf(char), realm: char.realm ?? '', class: char.class, race: char.race ?? '',
       role: char.role ?? 'dps', spec: char.spec ?? '', level: char.level, is_main: char.is_main,
     });
   }
@@ -158,11 +159,12 @@ export default function CharacterPage() {
       .update({
         name: editForm.name.trim(),
         realm: editForm.realm.trim() || null,
+        ...(char.game !== undefined || editForm.game !== 'forever' ? { game: editForm.game } : {}),
         class: editForm.class,
         race: editForm.race || null,
         role: editForm.role,
         spec: specsOf(editForm.class).length && editForm.spec ? editForm.spec : null,
-        level: Math.min(MAX_LEVEL, Math.max(1, Number(editForm.level) || 1)),
+        level: Math.min(maxLevelFor(editForm), Math.max(1, Number(editForm.level) || 1)),
         is_main: editForm.is_main,
         updated_at: new Date().toISOString(),
       })
@@ -199,24 +201,25 @@ export default function CharacterPage() {
           <h2>Edit character</h2>
           <div className="form-grid">
             <div><label htmlFor="ename">Name</label><input id="ename" required value={editForm.name} onChange={setField('name')} /></div>
-            <div>
-              <label htmlFor="erealm">Ruleset</label>
-              <input id="erealm" list="erulesets" value={editForm.realm} onChange={setField('realm')} placeholder="Normal, PvP, RP…" />
-              <datalist id="erulesets">{RULESETS.map((r) => <option key={r} value={r} />)}</datalist>
-            </div>
+            <GameRealmFields idPrefix="e" value={editForm} onChange={(patch) => setEditForm((f) => {
+              const next = { ...f, ...patch };
+              if (!classesFor(next.game).includes(next.class)) next.class = 'Warrior';
+              if (next.race && !racesFor(next.game).includes(next.race)) next.race = '';
+              return next;
+            })} />
             <div>
               <label htmlFor="eclass">Class</label>
               <select id="eclass" value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value, spec: '' }))}>
-                {!CLASS_NAMES.includes(editForm.class) && <option>{editForm.class}</option>}
-                {CLASS_NAMES.map((c) => <option key={c}>{c}</option>)}
+                {!classesFor(editForm.game).includes(editForm.class) && <option>{editForm.class}</option>}
+                {classesFor(editForm.game).map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor="erace">Race</label>
               <select id="erace" value={editForm.race} onChange={setField('race')}>
                 <option value="">—</option>
-                {editForm.race && !RACES.includes(editForm.race) && <option>{editForm.race}</option>}
-                {RACES.map((r) => <option key={r}>{r}</option>)}
+                {editForm.race && !racesFor(editForm.game).includes(editForm.race) && <option>{editForm.race}</option>}
+                {racesFor(editForm.game).map((r) => <option key={r}>{r}</option>)}
               </select>
             </div>
             {specsOf(editForm.class).length > 0 && (
@@ -235,7 +238,7 @@ export default function CharacterPage() {
                 {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
               </select>
             </div>
-            <div><label htmlFor="elevel">Level</label><input id="elevel" type="number" min={1} max={MAX_LEVEL} value={editForm.level} onChange={setField('level')} /></div>
+            <div><label htmlFor="elevel">Level</label><input id="elevel" type="number" min={1} max={maxLevelFor(editForm)} value={editForm.level} onChange={setField('level')} /></div>
           </div>
           <label className="checkbox"><input type="checkbox" checked={editForm.is_main} onChange={setField('is_main')} /> This is my main</label>
           <div className="row spread">
@@ -251,9 +254,9 @@ export default function CharacterPage() {
       <p className="muted">
         {char.race ? `${char.race} ` : ''}{char.spec ? `${specsOf(char.class).find((x) => x.id === char.spec)?.name ?? ''} ` : ''}{char.class}
         {char.role ? ` · ${ROLES[char.role].label}` : ''}
-        {char.realm ? ` · ${char.realm}` : ''} · played by {char.profiles?.display_name}
+        {` · ${GAMES[gameOf(char)].label}`}{char.realm ? ` · ${char.realm}` : ''} · played by {char.profiles?.display_name}
       </p>
-      <div style={{ maxWidth: 320, marginBottom: '1.25rem' }}><LevelBar level={char.level} className={char.class} /></div>
+      <div style={{ maxWidth: 320, marginBottom: '1.25rem' }}><LevelBar level={char.level} className={char.class} max={maxLevelFor(char)} /></div>
       {error && <p className="error">{error}</p>}
 
       {/* ---------- Upgrades to look for ---------- */}

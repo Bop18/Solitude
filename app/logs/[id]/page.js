@@ -68,6 +68,27 @@ export default function LogPage() {
     setBusy(false);
   }
 
+  async function toggleKeep() {
+    setError(''); setNote('');
+    if (log.kept) {
+      const { error } = await supabase.from('logs').update({ kept: false }).eq('id', log.id);
+      if (error) return setError(error.message);
+      return load();
+    }
+    setBusy(true);
+    const { data } = await supabase.auth.getSession();
+    const res = await fetch('/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      body: JSON.stringify({ url: log.url, keep: true }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) setError(body.error?.includes('kept') ? 'Run supabase/schema-15-keep-logs.sql in Supabase first.' : body.error ?? 'Could not keep it.');
+    else setNote(body.warning ?? 'Kept for good. This report is saved here even if it’s deleted on Warcraft Logs.');
+    await load();
+    setBusy(false);
+  }
+
   async function remove() {
     if (!confirm('Remove this log from the site? (It stays on Warcraft Logs.)')) return;
     const { error } = await supabase.from('logs').delete().eq('id', log.id);
@@ -93,6 +114,9 @@ export default function LogPage() {
       </p>
       <div className="row" style={{ marginBottom: '1rem' }}>
         <a className="btn ghost small" href={log.url} target="_blank" rel="noreferrer">Open on Warcraft Logs ↗</a>
+        <button className={`btn small ${log.kept ? '' : 'ghost'}`} onClick={toggleKeep} disabled={busy} title="Keep this report for good, even if it's deleted on Warcraft Logs">
+          {log.kept ? '★ Kept' : '☆ Keep'}
+        </button>
         <button className="btn ghost small" onClick={() => refresh()} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh'}</button>
         {log.added_by === userId && <button className="btn danger small" onClick={remove}>Remove</button>}
       </div>

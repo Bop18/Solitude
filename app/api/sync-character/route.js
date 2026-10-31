@@ -107,8 +107,10 @@ export async function POST(request) {
 
   const region = (process.env.BLIZZARD_REGION || 'eu').toLowerCase();
   const forced = process.env.BLIZZARD_NAMESPACE?.trim();
-  const tryList = forced
-    ? [forced]
+  // Retail and Classic characters have known namespaces; WoW: Forever's is guessed
+  const tryList = character.game === 'retail' ? ['profile']
+    : character.game === 'classic' ? ['profile-classic1x', 'profile-classic']
+    : forced ? [forced]
     : [...new Set([workingNamespace[region], ...NAMESPACE_GUESSES].filter(Boolean))];
 
   try {
@@ -142,7 +144,7 @@ export async function POST(request) {
     if (!used) {
       return json({ error: `Blizzard's API returned an error (${lastStatus}). It may not support this game version yet.` }, 502);
     }
-    if (!forced) workingNamespace[region] = used;
+    if (!forced && !['retail', 'classic'].includes(character.game)) workingNamespace[region] = used;
 
     const profile = await profileRes.json();
     const equipment = await equipRes.json();

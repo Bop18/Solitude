@@ -7,9 +7,10 @@ import { specsOf } from '@/lib/specs';
 import { useAuth } from '@/components/AuthProvider';
 import LevelBar from '@/components/LevelBar';
 import { timeAgo } from '@/components/ActivityFeed';
-import { CLASS_NAMES, RACES, ROLES, MAX_LEVEL, classColor, RULESETS } from '@/lib/wow';
+import { ROLES, classColor, GAMES, gameOf, maxLevelFor, classesFor, racesFor } from '@/lib/wow';
+import GameRealmFields from '@/components/GameRealmFields';
 
-const EMPTY_FORM = { name: '', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', spec: '', level: 1, is_main: false };
+const EMPTY_FORM = { name: '', game: 'forever', realm: 'Normal', class: 'Warrior', race: '', role: 'dps', spec: '', level: 1, is_main: false };
 
 // Synced from the game in the last 2 weeks? Then the level updates by itself.
 const isSynced = (c) => c.synced_at && Date.now() - new Date(c.synced_at).getTime() < 14 * 86400000;
@@ -42,8 +43,10 @@ export default function RosterPage() {
     if (form.is_main) {
       await supabase.from('characters').update({ is_main: false }).eq('owner', userId);
     }
+    const { game, ...rest } = form;
     const { error } = await supabase.from('characters').insert({
-      ...form,
+      ...rest,
+      ...(game !== 'forever' ? { game } : {}), // 'forever' is the database default
       name: form.name.trim(),
       realm: form.realm.trim() || null,
       race: form.race || null,
@@ -102,13 +105,13 @@ export default function RosterPage() {
                     <td>
                       <Link href={`/characters/${c.id}`}><strong style={{ color: classColor(c.class) }}>{c.name}</strong></Link>
                       {c.is_main && <span className="badge gold" style={{ marginLeft: 6 }}>Main</span>}
-                      {c.realm && <div className="muted small">{c.realm}</div>}
+                      <div className="muted small">{[gameOf(c) !== 'forever' && GAMES[gameOf(c)].label, c.realm].filter(Boolean).join(' · ')}</div>
                     </td>
                     <td className="muted">{c.profiles?.display_name}</td>
                     <td>{c.race ? `${c.race} ` : ''}{c.class}</td>
                     <td>{specsOf(c.class).find((sp) => sp.id === c.spec)?.name ?? <span className="muted">—</span>}</td>
                     <td>{c.role ? `${ROLES[c.role].icon} ${ROLES[c.role].label}` : '—'}</td>
-                    <td><LevelBar level={c.level} className={c.class} /></td>
+                    <td><LevelBar level={c.level} className={c.class} max={maxLevelFor(c)} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -138,15 +141,15 @@ export default function RosterPage() {
                     <>
                       <button className="btn ghost small" onClick={() => updateCharacter(c.id, { level: Math.max(1, c.level - 1) })} aria-label="Level down">−</button>
                       <input
-                        type="number" min={1} max={MAX_LEVEL} defaultValue={c.level} key={c.level}
+                        type="number" min={1} max={maxLevelFor(c)} defaultValue={c.level} key={c.level}
                         style={{ width: 70 }}
                         onBlur={(e) => {
-                          const lvl = Math.min(MAX_LEVEL, Math.max(1, Number(e.target.value) || 1));
+                          const lvl = Math.min(maxLevelFor(c), Math.max(1, Number(e.target.value) || 1));
                           if (lvl !== c.level) updateCharacter(c.id, { level: lvl });
                         }}
                         aria-label="Level"
                       />
-                      <button className="btn small" onClick={() => updateCharacter(c.id, { level: Math.min(MAX_LEVEL, c.level + 1) })} aria-label="Level up">Ding! +1</button>
+                      <button className="btn small" onClick={() => updateCharacter(c.id, { level: Math.min(maxLevelFor(c), c.level + 1) })} aria-label="Level up">Ding! +1</button>
                     </>
                   )}
                   {specsOf(c.class).length > 0 && (
@@ -182,22 +185,24 @@ export default function RosterPage() {
                 <label htmlFor="cname">Name</label>
                 <input id="cname" required value={form.name} onChange={set('name')} />
               </div>
-              <div>
-                <label htmlFor="realm">Ruleset</label>
-                <input id="realm" list="rulesets" value={form.realm} onChange={set('realm')} placeholder="Normal, PvP, RP…" />
-                <datalist id="rulesets">{RULESETS.map((r) => <option key={r} value={r} />)}</datalist>
-              </div>
+              <GameRealmFields value={form} onChange={(patch) => setForm((f) => {
+                const next = { ...f, ...patch };
+                if (!classesFor(next.game).includes(next.class)) next.class = 'Warrior';
+                if (next.race && !racesFor(next.game).includes(next.race)) next.race = '';
+                next.level = Math.min(Number(next.level) || 1, maxLevelFor(next));
+                return next;
+              })} />
               <div>
                 <label htmlFor="class">Class</label>
                 <select id="class" value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value, spec: '' }))}>
-                  {CLASS_NAMES.map((cl) => <option key={cl}>{cl}</option>)}
+                  {classesFor(form.game).map((cl) => <option key={cl}>{cl}</option>)}
                 </select>
               </div>
               <div>
                 <label htmlFor="race">Race</label>
                 <select id="race" value={form.race} onChange={set('race')}>
                   <option value="">—</option>
-                  {RACES.map((r) => <option key={r}>{r}</option>)}
+                  {racesFor(form.game).map((r) => <option key={r}>{r}</option>)}
                 </select>
               </div>
               {specsOf(form.class).length > 0 && (
@@ -218,7 +223,7 @@ export default function RosterPage() {
               </div>
               <div>
                 <label htmlFor="level">Level</label>
-                <input id="level" type="number" min={1} max={MAX_LEVEL} value={form.level} onChange={set('level')} />
+                <input id="level" type="number" min={1} max={maxLevelFor(form)} value={form.level} onChange={set('level')} />
               </div>
             </div>
             <label className="checkbox">

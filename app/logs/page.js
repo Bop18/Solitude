@@ -16,6 +16,8 @@ export default function LogsPage() {
   const [myChars, setMyChars] = useState([]);
   const [picked, setPicked] = useState('all'); // 'all' or a character id
   const [finding, setFinding] = useState(false);
+  const [onlyKept, setOnlyKept] = useState(false);
+  const [keeping, setKeeping] = useState({});
   const [findNote, setFindNote] = useState('');
   const [logs, setLogs] = useState([]);
   const [events, setEvents] = useState([]);
@@ -27,13 +29,11 @@ export default function LogsPage() {
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - 14 * 86400e3).toISOString();
-    const cols = 'id, code, url, title, zone, started_at, data, event_id, events(id, title), profiles!added_by(display_name)';
-    const query = (c) => supabase.from('logs').select(c).order('started_at', { ascending: false, nullsFirst: false }).limit(400);
-    const [l0, e] = await Promise.all([
-      query(`${cols}, found_for`),
+    const [l, e] = await Promise.all([
+      // '*' so this works whichever database updates have been run
+      supabase.from('logs').select('*, events(id, title), profiles!added_by(display_name)').order('started_at', { ascending: false, nullsFirst: false }).limit(400),
       supabase.from('events').select('id, title, starts_at').gte('starts_at', since).lte('starts_at', new Date().toISOString()).order('starts_at', { ascending: false }).limit(20),
     ]);
-    const l = l0.error?.message?.includes('found_for') ? await query(cols) : l0; // before update 14
     if (l.error) setError(l.error.message.includes('logs') ? 'Run supabase/schema-13-logs.sql in Supabase to turn on Logs.' : l.error.message);
     setLogs(l.data ?? []);
     setEvents(e.data ?? []);
@@ -44,7 +44,7 @@ export default function LogsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('characters').select('id, name, class, realm, is_main, level').eq('owner', userId)
+    supabase.from('characters').select('*').eq('owner', userId)
       .then(({ data }) => setMyChars((data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))));
   }, [userId]);
 
@@ -87,7 +87,25 @@ export default function LogsPage() {
 
   const charsShown = picked === 'all' ? myChars : myChars.filter((c) => String(c.id) === String(picked));
   const has = (l, c) => (l.found_for ?? []).includes(c.id) || (l.data?.players ?? []).some((p) => p.name.toLowerCase() === c.name.toLowerCase());
-  const shownLogs = view === 'mine' ? logs.filter((l) => charsShown.some((c) => has(l, c))) : logs;
+  let shownLogs = view === 'mine' ? logs.filter((l) => charsShown.some((c) => has(l, c))) : logs;
+  if (onlyKept) shownLogs = shownLogs.filter((l) => l.kept);
+
+  // ★ Keep: read the full report now and keep it for good (even if Warcraft Logs deletes it)
+  async function toggleKeep(l) {
+    setKeeping((k) => ({ ...k, [l.id]: true }));
+    setError('');
+    if (l.kept) {
+      const { error } = await supabase.from('logs').update({ kept: false }).eq('id', l.id);
+      if (error) setError(error.message.includes('kept') ? 'Run supabase/schema-15-keep-logs.sql in Supabase first.' : error.message);
+    } else {
+      const res = await fetch('/api/logs', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ url: l.url, keep: true }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) setError(body.error?.includes('kept') ? 'Run supabase/schema-15-keep-logs.sql in Supabase first.' : body.error ?? 'Could not keep that log.');
+      else if (body.warning) setError(body.warning);
+    }
+    await load();
+    setKeeping((k) => ({ ...k, [l.id]: false }));
+  }
 
   async function add(e) {
     e.preventDefault();
@@ -173,10 +191,16 @@ export default function LogsPage() {
       )}
 
       <section className="panel">
-        <h2>{view === 'mine' ? (picked === 'all' ? 'Your logs' : `${charsShown[0]?.name ?? ''}'s logs`) : 'Saved logs'}</h2>
+        <div className="row spread">
+          <h2>{view === 'mine' ? (picked === 'all' ? 'Your logs' : `${charsShown[0]?.name ?? ''}'s logs`) : 'Saved logs'}</h2>
+          <label className="checkbox" style={{ margin: 0 }}>
+            <input type="checkbox" checked={onlyKept} onChange={(e) => setOnlyKept(e.target.checked)} /> Only ★ kept
+          </label>
+        </div>
+        <p className="muted small" style={{ marginTop: 0 }}>Press ★ on a log to keep it for good: the site reads the whole report straight away and stores it, so it stays even after it's gone from Warcraft Logs.</p>
         {!loaded ? <p className="muted">Loading…</p> : shownLogs.length === 0 ? (
           <p className="muted">{view === 'mine'
-            ? (finding ? 'Checking Warcraft Logs…' : 'No logs found for this character yet. Reports only show up once they are uploaded to Warcraft Logs as public or unlisted.')
+            ? (onlyKept ? 'No kept logs here yet. Press ☆ on a log to keep it.' : finding ? 'Checking Warcraft Logs…' : 'No logs found for this character yet. Reports only show up once they are uploaded to Warcraft Logs as public or unlisted.')
             : 'No logs yet. After a run, upload it with the Warcraft Logs uploader and paste the link above.'}</p>
         ) : (
           <div className="log-list">
@@ -199,6 +223,13 @@ export default function LogsPage() {
                     </div>
                   </div>
                   <div className="row" style={{ flexWrap: 'nowrap' }}>
+                    <button
+                      className={`keep-btn ${l.kept ? 'on' : ''}`}
+                      title={l.kept ? 'Kept for good. Click to un-keep.' : 'Keep this log for good'}
+                      aria-pressed={!!l.kept}
+                      disabled={keeping[l.id]}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleKeep(l); }}
+                    >{keeping[l.id] ? '…' : l.kept ? '★' : '☆'}</button>
                     {l.data ? (
                       <>
                         {topPlayer && (

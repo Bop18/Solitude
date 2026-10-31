@@ -45,7 +45,7 @@ export default function Dashboard() {
       setEvents(ev.data ?? []);
       // One character per player: their main, or their highest level
       const byPlayer = new Map();
-      for (const c of ch.data ?? []) {
+      for (const c of (ch.data ?? []).filter((x) => x.game !== 'retail')) {
         const current = byPlayer.get(c.owner);
         if (!current || (c.is_main && !current.is_main)) byPlayer.set(c.owner, c);
       }
