@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { formatWhen } from '@/components/EventCard';
 import ItemName from '@/components/ItemName';
 import EventBosses from '@/components/EventBosses';
+import EventLogs from '@/components/EventLogs';
 import RouteEditor from '@/components/RouteEditor';
 import BossTactics from '@/components/BossTactics';
 import DungeonGuide from '@/components/DungeonGuide';
@@ -182,6 +183,7 @@ export default function EventPage() {
       )}
 
       {event.dungeon_id && <EventBosses event={event} signups={signups} userId={userId} />}
+      {new Date(event.starts_at) < new Date() && <EventLogs eventId={event.id} />}
 
       {event.dungeons && (
         <section className="panel">
