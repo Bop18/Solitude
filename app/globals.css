@@ -629,3 +629,4 @@ h1 {
 .boss-ticks { list-style: none; margin: 0.5rem 0 0; padding: 0; font-size: 0.85rem; color: var(--muted); }
 .boss-ticks li.done { color: var(--text); }
 .boss-ticks li.week { color: var(--ok); font-weight: 600; }
+.panel h3 { margin: 1.4rem 0 0.6rem; font-size: 1.02rem; }

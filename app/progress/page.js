@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import RetailProgress from '@/components/RetailProgress';
+import ClassicCharacters from '@/components/ClassicCharacters';
 import Link from 'next/link';
 import useProgressData from '@/lib/useProgressData';
 import RaidProgress from '@/components/RaidProgress';
@@ -71,6 +72,10 @@ function ClassicProgress() {
     <>
       {error && <p className="error">{error}</p>}
 
+      {/* ---------- Characters (click one for their week) ---------- */}
+      {loaded && <ClassicCharacters dungeons={dungeons} kills={kills} lockouts={lockouts} characters={characters} bossesByDungeon={bossesByDungeon} />}
+
+      <h2 style={{ margin: '1.75rem 0 0.75rem' }}>The whole group</h2>
       {/* ---------- Numbers ---------- */}
       <div className="stat-tiles">
         <div className="stat-tile"><span className="stat-num">{started.reduce((s, r) => s + r.killed, 0)}</span><span className="stat-label">raid bosses this week</span></div>
