@@ -4,10 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/AuthProvider';
 import { clock } from '@/lib/wcl';
 
 export default function LogsPage() {
   const router = useRouter();
+  const { session } = useAuth();
+  const userId = session?.user?.id;
+  const [view, setView] = useState('all'); // all | mine
+  const [myNames, setMyNames] = useState([]);
+  const [found, setFound] = useState(null); // reports found on Warcraft Logs
+  const [finding, setFinding] = useState(false);
+  const [findNote, setFindNote] = useState('');
+  const [saving, setSaving] = useState({});
   const [logs, setLogs] = useState([]);
   const [events, setEvents] = useState([]);
   const [url, setUrl] = useState('');
@@ -29,6 +38,48 @@ export default function LogsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('characters').select('name').eq('owner', userId)
+      .then(({ data }) => setMyNames((data ?? []).map((c) => c.name.toLowerCase())));
+  }, [userId]);
+
+  async function authHeaders() {
+    const { data } = await supabase.auth.getSession();
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` };
+  }
+
+  // Ask Warcraft Logs for reports my characters are in
+  async function findMine() {
+    setFinding(true); setFindNote(''); setError('');
+    try {
+      const res = await fetch('/api/logs/find', { method: 'POST', headers: await authHeaders(), body: '{}' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
+      setFound(body.reports ?? []);
+      const parts = [];
+      if (body.searched?.length) parts.push(`Searched for ${body.searched.join(', ')}.`);
+      if (body.notFound?.length) parts.push(`Not on Warcraft Logs yet: ${body.notFound.join(', ')}.`);
+      if (body.note) parts.push(body.note);
+      setFindNote(parts.join(' '));
+    } catch (err) {
+      setError(err.message);
+    }
+    setFinding(false);
+  }
+
+  async function saveFound(r) {
+    setSaving((x) => ({ ...x, [r.code]: 'saving' }));
+    const res = await fetch('/api/logs', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ url: r.url }) });
+    const body = await res.json().catch(() => ({}));
+    setSaving((x) => ({ ...x, [r.code]: res.ok ? body.id : 'error' }));
+    if (res.ok) load();
+  }
+
+  const savedCodes = new Set(logs.map((l) => l.code));
+  const isMine = (l) => (l.data?.players ?? []).some((p) => myNames.includes(p.name.toLowerCase()));
+  const shownLogs = view === 'mine' ? logs.filter(isMine) : logs;
 
   async function add(e) {
     e.preventDefault();
@@ -79,13 +130,60 @@ export default function LogsPage() {
         {error && <p className="error">{error}</p>}
       </section>
 
+      <nav className="tabs">
+        <a href="#" className={view === 'all' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setView('all'); }}>All logs</a>
+        <a href="#" className={view === 'mine' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setView('mine'); }}>My logs</a>
+      </nav>
+
+      {view === 'mine' && (
+        <section className="panel">
+          <div className="row spread">
+            <h2>On Warcraft Logs</h2>
+            <button className="btn small" onClick={findMine} disabled={finding}>{finding ? 'Searching…' : found ? 'Search again' : 'Find my logs'}</button>
+          </div>
+          <p className="muted small">Looks up every report your characters appear in, even ones nobody has added here yet. Save the ones you want to keep.</p>
+          {findNote && <p className="muted small">{findNote}</p>}
+          {found && (found.length === 0 ? <p className="muted">No reports found for your characters.</p> : (
+            <div className="log-list">
+              {found.map((r) => {
+                const state = saving[r.code];
+                const saved = savedCodes.has(r.code) || typeof state === 'number';
+                const savedId = typeof state === 'number' ? state : logs.find((l) => l.code === r.code)?.id;
+                return (
+                  <div key={r.code} className="log-row">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="log-title">{r.title || r.zone || r.code}</div>
+                      <div className="muted small">
+                        {[r.zone && r.zone !== r.title && r.zone,
+                          r.start && new Date(r.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+                          r.start && r.end && `${clock(r.end - r.start)} long`,
+                          `with ${r.characters.join(', ')}`,
+                        ].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                    <div className="row" style={{ flexWrap: 'nowrap' }}>
+                      <a className="btn ghost small" href={r.url} target="_blank" rel="noreferrer">↗</a>
+                      {saved
+                        ? <Link className="btn ghost small" href={`/logs/${savedId}`}>✓ Saved</Link>
+                        : <button className="btn small" disabled={state === 'saving'} onClick={() => saveFound(r)}>{state === 'saving' ? 'Saving…' : state === 'error' ? 'Try again' : 'Save'}</button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </section>
+      )}
+
       <section className="panel">
-        <h2>Saved logs</h2>
-        {!loaded ? <p className="muted">Loading…</p> : logs.length === 0 ? (
-          <p className="muted">No logs yet. After a run, upload it with the Warcraft Logs uploader and paste the link above.</p>
+        <h2>{view === 'mine' ? 'Saved logs you’re in' : 'Saved logs'}</h2>
+        {!loaded ? <p className="muted">Loading…</p> : shownLogs.length === 0 ? (
+          <p className="muted">{view === 'mine'
+            ? 'None of the saved logs have your characters in them yet. Use Find my logs above.'
+            : 'No logs yet. After a run, upload it with the Warcraft Logs uploader and paste the link above.'}</p>
         ) : (
           <div className="log-list">
-            {logs.map((l) => {
+            {shownLogs.map((l) => {
               const bosses = l.data?.bosses ?? [];
               const kills = bosses.filter((b) => b.kill).length;
               const wipes = bosses.length - kills;

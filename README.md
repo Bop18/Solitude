@@ -165,6 +165,10 @@ To turn on the full breakdown (without it, only the link is saved):
 
 Reports must be **public** or **unlisted** on Warcraft Logs (private ones can't be read).
 
+**My logs → Find my logs** asks Warcraft Logs for every recent report your characters appear in (by name + ruleset/realm), so you can save them in one click. Optional settings:
+- `WCL_REGION`: `EU` (default) or `US`.
+- `WCL_SITES`: which Warcraft Logs sites to search (default `classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com`). When WoW: Forever gets its own Warcraft Logs site, add its address here.
+
 ## Customising
 
 - **Site name and icon**: `lib/site.js`
