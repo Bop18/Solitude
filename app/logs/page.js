@@ -70,8 +70,8 @@ export default function LogsPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
       const parts = [];
-      parts.push(body.added ? `Found ${body.added} new log${body.added === 1 ? '' : 's'} on Warcraft Logs.` : 'Up to date with Warcraft Logs.');
-      if (body.notFound?.length) parts.push(`Not found on Warcraft Logs: ${body.notFound.join(', ')}. Check the name and realm/ruleset on the Roster.`);
+      parts.push(body.added ? `Found ${body.added} new log${body.added === 1 ? '' : 's'} on Warcraft Logs.` : 'No new logs.');
+      if (body.details?.length) parts.push(...body.details);
       if (body.note) parts.push(body.note);
       setFindNote(parts.join(' '));
       if (body.added) await load();

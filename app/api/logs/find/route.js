@@ -72,22 +72,30 @@ export async function POST(request) {
   const searched = [];
   const notFound = [];
 
+  const details = []; // what happened for each character, shown on the page
+
   await Promise.all(chars.map(async (c) => {
-    if (!c.realm) { notFound.push(`${c.name} (no ruleset/realm set)`); return; }
+    if (!c.realm) { notFound.push(`${c.name} (no realm/ruleset set)`); details.push(`${c.name}: add its realm on the Roster.`); return; }
+    const server = realmSlug(c.realm);
     let hit = false;
+    const problems = [];
     for (const site of sites) {
       try {
         const res = await fetch(`https://${site}/api/v2/client`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${wcl}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: QUERY, variables: { name: c.name, server: realmSlug(c.realm), region } }),
+          body: JSON.stringify({ query: QUERY, variables: { name: c.name, server, region } }),
           cache: 'no-store',
         });
         const body = await res.json().catch(() => ({}));
+        if (body?.errors?.length) problems.push(`${site}: ${body.errors[0].message}`);
+        else if (!res.ok) problems.push(`${site}: HTTP ${res.status}`);
         const ch = body?.data?.characterData?.character;
         if (!ch) continue;
         hit = true;
-        for (const r of ch.recentReports?.data ?? []) {
+        const list = ch.recentReports?.data ?? [];
+        details.push(`${c.name} found on ${site} (${server}, ${region}): ${list.length} report${list.length === 1 ? '' : 's'}.`);
+        for (const r of list) {
           const prev = found.get(r.code);
           found.set(r.code, {
             code: r.code,
@@ -100,7 +108,12 @@ export async function POST(request) {
             characterIds: [...new Set([...(prev?.characterIds ?? []), c.id])],
           });
         }
-      } catch { /* try the next site */ }
+      } catch (e) {
+        problems.push(`${site}: ${e.message}`);
+      }
+    }
+    if (!hit) {
+      details.push(`${c.name} not found as "${c.name}" on realm "${server}" in ${region}${problems.length ? ` (${problems.join('; ')})` : ''}.`);
     }
     (hit ? searched : notFound).push(c.name);
   }));
@@ -133,5 +146,5 @@ export async function POST(request) {
       if (merged.length !== have.length) await supabase.from('logs').update({ found_for: merged }).eq('id', byCode[r.code].id);
     }
   }
-  return json({ reports, added, searched, notFound, region });
+  return json({ reports, added, searched, notFound, region, details });
 }
