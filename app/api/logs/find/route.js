@@ -74,12 +74,34 @@ export async function POST(request) {
 
   const details = []; // what happened for each character, shown on the page
 
+  // Realms we've already seen each character on, from logs saved on the site
+  // (helps when the realm on the Roster is wrong or is a WoW: Forever ruleset).
+  const seenRealms = {};
+  {
+    const { data: saved } = await supabase.from('logs').select('players:data->players').not('data', 'is', null).limit(300);
+    for (const row of saved ?? []) {
+      for (const p of row.players ?? []) {
+        if (!p?.name || !p.server) continue;
+        const key = p.name.toLowerCase();
+        // Warcraft Logs writes realms without spaces ("TwistingNether"): try it with spaces too
+        const spaced = p.server.replace(/([a-z])([A-Z])/g, '$1 $2');
+        (seenRealms[key] ??= new Set()).add(spaced);
+        seenRealms[key].add(p.server);
+      }
+    }
+  }
+
   await Promise.all(chars.map(async (c) => {
-    if (!c.realm) { notFound.push(`${c.name} (no realm/ruleset set)`); details.push(`${c.name}: add its realm on the Roster.`); return; }
-    const server = realmSlug(c.realm);
+    const pretty = {}; // slug → nice name to save back on the character
+    for (const r of [c.realm, ...(seenRealms[c.name.toLowerCase()] ?? [])].filter(Boolean)) pretty[realmSlug(r)] ??= r;
+    const realmsToTry = Object.keys(pretty);
+    if (!realmsToTry.length) { notFound.push(`${c.name} (no realm set)`); details.push(`${c.name}: add its realm on the Roster.`); return; }
     let hit = false;
     const problems = [];
-    for (const site of sites) {
+    let server = realmsToTry[0];
+    search:
+    for (const realm of realmsToTry) for (const site of sites) {
+      server = realm;
       try {
         const res = await fetch(`https://${site}/api/v2/client`, {
           method: 'POST',
@@ -93,6 +115,10 @@ export async function POST(request) {
         const ch = body?.data?.characterData?.character;
         if (!ch) continue;
         hit = true;
+        if (realm !== realmSlug(c.realm ?? '')) {
+          // Remember the realm that worked so next time is quicker
+          await supabase.from('characters').update({ realm: pretty[realm] }).eq('id', c.id);
+        }
         const list = ch.recentReports?.data ?? [];
         details.push(`${c.name} found on ${site} (${server}, ${region}): ${list.length} report${list.length === 1 ? '' : 's'}.`);
         for (const r of list) {
@@ -108,12 +134,13 @@ export async function POST(request) {
             characterIds: [...new Set([...(prev?.characterIds ?? []), c.id])],
           });
         }
+        break search;
       } catch (e) {
         problems.push(`${site}: ${e.message}`);
       }
     }
     if (!hit) {
-      details.push(`${c.name} not found as "${c.name}" on realm "${server}" in ${region}${problems.length ? ` (${problems.join('; ')})` : ''}.`);
+      details.push(`${c.name} not found on realm ${realmsToTry.map((r) => `"${r}"`).join(' or ')} in ${region}${problems.length ? ` (${problems.join('; ')})` : ''}.`);
     }
     (hit ? searched : notFound).push(c.name);
   }));
