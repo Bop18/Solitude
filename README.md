@@ -54,6 +54,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    11. `supabase/schema-11-speed.sql` (indexes that keep the site fast as it fills up)
    12. `supabase/schema-12-specs.sql` (a Spec on each character, e.g. Holy / Protection / Retribution)
    13. `supabase/schema-13-logs.sql` (saved Warcraft Logs reports)
+   14. `supabase/schema-14-log-characters.sql` (which of your characters each log belongs to)
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -165,7 +166,7 @@ To turn on the full breakdown (without it, only the link is saved):
 
 Reports must be **public** or **unlisted** on Warcraft Logs (private ones can't be read).
 
-**My logs → Find my logs** asks Warcraft Logs for every recent report your characters appear in (by name + ruleset/realm), so you can save them in one click. Optional settings:
+**My logs** shows a button for each of your characters. Opening it (or picking a character) asks Warcraft Logs for that character's recent reports (by name + realm/ruleset, up to 50 each, retail included) and saves them all automatically; each one's breakdown is read the first time it's opened. Optional settings:
 - `WCL_REGION`: `EU` (default) or `US`.
 - `WCL_SITES`: which Warcraft Logs sites to search (default `classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com`). When WoW: Forever gets its own Warcraft Logs site, add its address here.
 

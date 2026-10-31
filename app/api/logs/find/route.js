@@ -1,5 +1,7 @@
-// POST /api/logs/find
-// Asks Warcraft Logs for recent reports that the logged-in player's characters appear in.
+// POST /api/logs/find  { characterId? }
+// Asks Warcraft Logs for recent reports that the logged-in player's characters appear in
+// (or just one character), and saves every one it finds on the Logs page (link + title + date;
+// the full breakdown is read the first time someone opens it).
 // Uses the same WCL_CLIENT_ID / WCL_CLIENT_SECRET as /api/logs.
 //   WCL_REGION  optional: EU (default), US, KR, TW, CN
 //   WCL_SITES   optional: which Warcraft Logs sites to search, comma-separated
@@ -35,7 +37,7 @@ async function wclToken() {
 const QUERY = `query($name: String!, $server: String!, $region: String!) {
   characterData { character(name: $name, serverSlug: $server, serverRegion: $region) {
     name
-    recentReports(limit: 25) { data { code title startTime endTime zone { name } } }
+    recentReports(limit: 50) { data { code title startTime endTime zone { name } } }
   } }
 }`;
 
@@ -54,7 +56,11 @@ export async function POST(request) {
   const userId = userData?.user?.id;
   if (!userId) return json({ error: 'Please log in again.' }, 401);
 
-  const { data: chars } = await supabase.from('characters').select('id, name, realm').eq('owner', userId);
+  let body = {};
+  try { body = await request.json(); } catch { /* no body */ }
+  let q = supabase.from('characters').select('id, name, realm').eq('owner', userId);
+  if (body.characterId) q = q.eq('id', Number(body.characterId));
+  const { data: chars } = await q;
   if (!chars?.length) return json({ reports: [], searched: [], note: 'Add your characters on the Roster first.' });
 
   const region = (process.env.WCL_REGION || process.env.BLIZZARD_REGION || 'EU').toUpperCase();
@@ -91,6 +97,7 @@ export async function POST(request) {
             start: r.startTime,
             end: r.endTime,
             characters: [...new Set([...(prev?.characters ?? []), c.name])],
+            characterIds: [...new Set([...(prev?.characterIds ?? []), c.id])],
           });
         }
       } catch { /* try the next site */ }
@@ -99,5 +106,32 @@ export async function POST(request) {
   }));
 
   const reports = [...found.values()].sort((a, b) => (b.start ?? 0) - (a.start ?? 0));
-  return json({ reports, searched, notFound, region });
+
+  // Save them all: new ones as "not read yet", and tag existing ones with the character
+  let added = 0;
+  if (reports.length) {
+    const { data: existing, error } = await supabase.from('logs').select('id, code, found_for').in('code', reports.map((r) => r.code));
+    if (error) return json({ error: error.message.includes('found_for') ? 'Run supabase/schema-14-log-characters.sql in Supabase first.' : error.message }, 500);
+    const byCode = Object.fromEntries((existing ?? []).map((l) => [l.code, l]));
+    const fresh = reports.filter((r) => !byCode[r.code]).map((r) => ({
+      code: r.code,
+      url: r.url,
+      title: r.title,
+      zone: r.zone,
+      started_at: r.start ? new Date(r.start).toISOString() : null,
+      ended_at: r.end ? new Date(r.end).toISOString() : null,
+      found_for: r.characterIds,
+    }));
+    if (fresh.length) {
+      const { error: insErr } = await supabase.from('logs').insert(fresh);
+      if (insErr) return json({ error: insErr.message }, 500);
+      added = fresh.length;
+    }
+    for (const r of reports.filter((x) => byCode[x.code])) {
+      const have = byCode[r.code].found_for ?? [];
+      const merged = [...new Set([...have, ...r.characterIds])];
+      if (merged.length !== have.length) await supabase.from('logs').update({ found_for: merged }).eq('id', byCode[r.code].id);
+    }
+  }
+  return json({ reports, added, searched, notFound, region });
 }

@@ -13,11 +13,10 @@ export default function LogsPage() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const [view, setView] = useState('all'); // all | mine
-  const [myNames, setMyNames] = useState([]);
-  const [found, setFound] = useState(null); // reports found on Warcraft Logs
+  const [myChars, setMyChars] = useState([]);
+  const [picked, setPicked] = useState('all'); // 'all' or a character id
   const [finding, setFinding] = useState(false);
   const [findNote, setFindNote] = useState('');
-  const [saving, setSaving] = useState({});
   const [logs, setLogs] = useState([]);
   const [events, setEvents] = useState([]);
   const [url, setUrl] = useState('');
@@ -28,10 +27,13 @@ export default function LogsPage() {
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - 14 * 86400e3).toISOString();
-    const [l, e] = await Promise.all([
-      supabase.from('logs').select('id, code, url, title, zone, started_at, data, event_id, events(id, title), profiles!added_by(display_name)').order('started_at', { ascending: false, nullsFirst: false }).limit(100),
+    const cols = 'id, code, url, title, zone, started_at, data, event_id, events(id, title), profiles!added_by(display_name)';
+    const query = (c) => supabase.from('logs').select(c).order('started_at', { ascending: false, nullsFirst: false }).limit(400);
+    const [l0, e] = await Promise.all([
+      query(`${cols}, found_for`),
       supabase.from('events').select('id, title, starts_at').gte('starts_at', since).lte('starts_at', new Date().toISOString()).order('starts_at', { ascending: false }).limit(20),
     ]);
+    const l = l0.error?.message?.includes('found_for') ? await query(cols) : l0; // before update 14
     if (l.error) setError(l.error.message.includes('logs') ? 'Run supabase/schema-13-logs.sql in Supabase to turn on Logs.' : l.error.message);
     setLogs(l.data ?? []);
     setEvents(e.data ?? []);
@@ -42,8 +44,8 @@ export default function LogsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('characters').select('name').eq('owner', userId)
-      .then(({ data }) => setMyNames((data ?? []).map((c) => c.name.toLowerCase())));
+    supabase.from('characters').select('id, name, class, realm, is_main, level').eq('owner', userId)
+      .then(({ data }) => setMyChars((data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))));
   }, [userId]);
 
   async function authHeaders() {
@@ -51,36 +53,41 @@ export default function LogsPage() {
     return { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` };
   }
 
-  // Ask Warcraft Logs for reports my characters are in
-  async function findMine() {
-    setFinding(true); setFindNote(''); setError('');
+  // Ask Warcraft Logs for this character's reports (or all of mine) and save any new ones.
+  // Runs by itself when you open My logs / pick a character, at most every 30 minutes.
+  const check = useCallback(async (which, { force = false } = {}) => {
+    const key = `wcl-checked-${which}`;
+    let last = 0;
+    try { last = Number(sessionStorage.getItem(key) ?? 0); } catch { /* ignore */ }
+    if (!force && Date.now() - last < 30 * 60e3) return;
+    try { sessionStorage.setItem(key, String(Date.now())); } catch { /* ignore */ }
+    setFinding(true); setFindNote('');
     try {
-      const res = await fetch('/api/logs/find', { method: 'POST', headers: await authHeaders(), body: '{}' });
+      const res = await fetch('/api/logs/find', {
+        method: 'POST', headers: await authHeaders(),
+        body: JSON.stringify(which === 'all' ? {} : { characterId: which }),
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
-      setFound(body.reports ?? []);
       const parts = [];
-      if (body.searched?.length) parts.push(`Searched for ${body.searched.join(', ')}.`);
-      if (body.notFound?.length) parts.push(`Not on Warcraft Logs yet: ${body.notFound.join(', ')}.`);
+      parts.push(body.added ? `Found ${body.added} new log${body.added === 1 ? '' : 's'} on Warcraft Logs.` : 'Up to date with Warcraft Logs.');
+      if (body.notFound?.length) parts.push(`Not found on Warcraft Logs: ${body.notFound.join(', ')}. Check the name and realm/ruleset on the Roster.`);
       if (body.note) parts.push(body.note);
       setFindNote(parts.join(' '));
+      if (body.added) await load();
     } catch (err) {
-      setError(err.message);
+      setFindNote(err.message);
     }
     setFinding(false);
-  }
+  }, [load]);
 
-  async function saveFound(r) {
-    setSaving((x) => ({ ...x, [r.code]: 'saving' }));
-    const res = await fetch('/api/logs', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ url: r.url }) });
-    const body = await res.json().catch(() => ({}));
-    setSaving((x) => ({ ...x, [r.code]: res.ok ? body.id : 'error' }));
-    if (res.ok) load();
-  }
+  useEffect(() => {
+    if (view === 'mine' && myChars.length) check(picked);
+  }, [view, picked, myChars.length, check]);
 
-  const savedCodes = new Set(logs.map((l) => l.code));
-  const isMine = (l) => (l.data?.players ?? []).some((p) => myNames.includes(p.name.toLowerCase()));
-  const shownLogs = view === 'mine' ? logs.filter(isMine) : logs;
+  const charsShown = picked === 'all' ? myChars : myChars.filter((c) => String(c.id) === String(picked));
+  const has = (l, c) => (l.found_for ?? []).includes(c.id) || (l.data?.players ?? []).some((p) => p.name.toLowerCase() === c.name.toLowerCase());
+  const shownLogs = view === 'mine' ? logs.filter((l) => charsShown.some((c) => has(l, c))) : logs;
 
   async function add(e) {
     e.preventDefault();
@@ -139,48 +146,37 @@ export default function LogsPage() {
       {view === 'mine' && (
         <section className="panel">
           <div className="row spread">
-            <h2>On Warcraft Logs</h2>
-            <button className="btn small" onClick={findMine} disabled={finding}>{finding ? 'Searching…' : found ? 'Search again' : 'Find my logs'}</button>
+            <h2>Your characters</h2>
+            <button className="btn ghost small" onClick={() => check(picked, { force: true })} disabled={finding || !myChars.length}>
+              {finding ? 'Checking Warcraft Logs…' : 'Check again'}
+            </button>
           </div>
-          <p className="muted small">Looks up every report your characters appear in, even ones nobody has added here yet. Save the ones you want to keep.</p>
-          {findNote && <p className="muted small">{findNote}</p>}
-          {found && (found.length === 0 ? <p className="muted">No reports found for your characters.</p> : (
-            <div className="log-list">
-              {found.map((r) => {
-                const state = saving[r.code];
-                const saved = savedCodes.has(r.code) || typeof state === 'number';
-                const savedId = typeof state === 'number' ? state : logs.find((l) => l.code === r.code)?.id;
-                return (
-                  <div key={r.code} className="log-row">
-                    <div style={{ minWidth: 0 }}>
-                      <div className="log-title">{r.title || r.zone || r.code}</div>
-                      <div className="muted small">
-                        {[r.zone && r.zone !== r.title && r.zone,
-                          r.start && new Date(r.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
-                          r.start && r.end && `${clock(r.end - r.start)} long`,
-                          `with ${r.characters.join(', ')}`,
-                        ].filter(Boolean).join(' · ')}
-                      </div>
-                    </div>
-                    <div className="row" style={{ flexWrap: 'nowrap' }}>
-                      <a className="btn ghost small" href={r.url} target="_blank" rel="noreferrer">↗</a>
-                      {saved
-                        ? <Link className="btn ghost small" href={`/logs/${savedId}`}>✓ Saved</Link>
-                        : <button className="btn small" disabled={state === 'saving'} onClick={() => saveFound(r)}>{state === 'saving' ? 'Saving…' : state === 'error' ? 'Try again' : 'Save'}</button>}
-                    </div>
-                  </div>
-                );
-              })}
+          {myChars.length === 0 ? (
+            <p className="muted">Add your characters on the <Link href="/roster">Roster</Link> (with their realm or ruleset) and their logs appear here by themselves.</p>
+          ) : (
+            <div className="fight-chips">
+              <button className={`fight-chip ${picked === 'all' ? 'on' : ''}`} onClick={() => setPicked('all')}>
+                All my characters <span className="muted small">{logs.filter((l) => myChars.some((c) => has(l, c))).length} logs</span>
+              </button>
+              {myChars.map((c) => (
+                <button key={c.id} className={`fight-chip ${String(picked) === String(c.id) ? 'on' : ''}`} onClick={() => setPicked(c.id)}>
+                  <span style={{ color: classColor(c.class) }}>{c.name}</span>
+                  <span className="muted small">{c.realm ?? 'no realm set'} · {logs.filter((l) => has(l, c)).length} logs</span>
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+          <p className="muted small" style={{ marginBottom: 0 }}>
+            {finding ? 'Looking for new logs on Warcraft Logs…' : findNote || 'Logs your characters are in are picked up from Warcraft Logs automatically.'}
+          </p>
         </section>
       )}
 
       <section className="panel">
-        <h2>{view === 'mine' ? 'Saved logs you’re in' : 'Saved logs'}</h2>
+        <h2>{view === 'mine' ? (picked === 'all' ? 'Your logs' : `${charsShown[0]?.name ?? ''}'s logs`) : 'Saved logs'}</h2>
         {!loaded ? <p className="muted">Loading…</p> : shownLogs.length === 0 ? (
           <p className="muted">{view === 'mine'
-            ? 'None of the saved logs have your characters in them yet. Use Find my logs above.'
+            ? (finding ? 'Checking Warcraft Logs…' : 'No logs found for this character yet. Reports only show up once they are uploaded to Warcraft Logs as public or unlisted.')
             : 'No logs yet. After a run, upload it with the Warcraft Logs uploader and paste the link above.'}</p>
         ) : (
           <div className="log-list">
@@ -213,7 +209,7 @@ export default function LogsPage() {
                           </span>
                         )}
                       </>
-                    ) : <span className="badge">Link only</span>}
+                    ) : <span className="badge" title="The breakdown is read from Warcraft Logs when you open it">Open to read</span>}
                   </div>
                 </Link>
               );

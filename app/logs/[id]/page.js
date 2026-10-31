@@ -48,7 +48,13 @@ export default function LogPage() {
   // Match log players to our characters by name
   const charByName = useMemo(() => Object.fromEntries(chars.map((c) => [c.name.toLowerCase(), c])), [chars]);
 
-  async function refresh() {
+  // Found automatically but not read yet? Read it now, once.
+  const [autoTried, setAutoTried] = useState(false);
+  useEffect(() => {
+    if (log && !log.data && !autoTried) { setAutoTried(true); refresh({ quiet: true }); }
+  }, [log, autoTried]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function refresh({ quiet = false } = {}) {
     setBusy(true); setError(''); setNote('');
     const { data } = await supabase.auth.getSession();
     const res = await fetch('/api/logs', {
@@ -58,7 +64,7 @@ export default function LogPage() {
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) setError(body.error ?? 'Refresh failed.');
-    else { setNote(body.warning ?? 'Updated from Warcraft Logs.'); await load(); }
+    else { setNote(body.warning ?? (quiet ? '' : 'Updated from Warcraft Logs.')); await load(); }
     setBusy(false);
   }
 
@@ -87,7 +93,7 @@ export default function LogPage() {
       </p>
       <div className="row" style={{ marginBottom: '1rem' }}>
         <a className="btn ghost small" href={log.url} target="_blank" rel="noreferrer">Open on Warcraft Logs ↗</a>
-        <button className="btn ghost small" onClick={refresh} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh'}</button>
+        <button className="btn ghost small" onClick={() => refresh()} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh'}</button>
         {log.added_by === userId && <button className="btn danger small" onClick={remove}>Remove</button>}
       </div>
       {note && <p className="success">{note}</p>}
@@ -100,7 +106,9 @@ export default function LogPage() {
       <>
         {header}
         <section className="panel">
-          <p className="muted">Only the link is saved for this one. Press <strong>Refresh</strong> once the site has its Warcraft Logs keys, or if the report was private when it was added.</p>
+          <p className="muted">{busy
+            ? 'Reading this report from Warcraft Logs… (big raids can take a few seconds)'
+            : <>Only the link is saved for this one. Press <strong>Refresh</strong> to try reading it again (the site needs its Warcraft Logs keys, and the report must be public or unlisted).</>}</p>
         </section>
       </>
     );
