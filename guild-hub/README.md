@@ -53,6 +53,9 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    10. `supabase/schema-10-forever.sql` (WoW: Forever's rulesets instead of realms)
    11. `supabase/schema-11-speed.sql` (indexes that keep the site fast as it fills up)
    12. `supabase/schema-12-specs.sql` (a Spec on each character, e.g. Holy / Protection / Retribution)
+   13. `supabase/schema-13-logs.sql` (saved Warcraft Logs reports)
+   14. `supabase/schema-14-log-characters.sql` (which of your characters each log belongs to)
+   15. `supabase/schema-15-keep-logs.sql` (★ Keep: store a log's full breakdown for good)
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -153,6 +156,21 @@ Level milestones post every 10 levels and at max level. To change that, edit `ac
 
 ---
 
+## Warcraft Logs
+
+Paste a report link on the **Logs** page. The site reads it and shows boss kills and wipes, damage, healing and deaths, and keeps its own copy.
+
+To turn on the full breakdown (without it, only the link is saved):
+1. Go to https://www.warcraftlogs.com/api/clients and log in, then **Create Client**.
+2. Name: `Solitude`. Redirect URL: your site's address (it isn't used, but the form needs one). Leave "Public client" unticked.
+3. Copy the **Client ID** and **Client Secret** into Vercel → Settings → Environment Variables as `WCL_CLIENT_ID` and `WCL_CLIENT_SECRET`, then redeploy.
+
+Reports must be **public** or **unlisted** on Warcraft Logs (private ones can't be read).
+
+**My logs** shows a button for each of your characters. Opening it (or picking a character) asks Warcraft Logs for that character's recent reports (by name + realm/ruleset, up to 50 each, retail included) and saves them all automatically; each one's breakdown is read the first time it's opened. Optional settings:
+- `WCL_REGION`: `EU` (default) or `US`.
+- `WCL_SITES`: which Warcraft Logs sites to search (default `classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com`). When WoW: Forever gets its own Warcraft Logs site, add its address here.
+
 ## Customising
 
 - **Site name and icon**: `lib/site.js`
@@ -177,6 +195,7 @@ Level milestones post every 10 levels and at max level. To change that, edit `ac
 app/
   page.js                  Dashboard (tonight banner, next steps, suggested run, levelling race, activity)
   settings/page.js         Theme, colour and display name
+  logs/                    Warcraft Logs: paste a link, read the breakdown
   login/page.js            Login / sign-up
   roster/page.js           Characters and levels
   availability/page.js     Weekly availability + heatmap

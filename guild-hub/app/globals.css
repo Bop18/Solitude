@@ -586,3 +586,32 @@ h1 {
 
 /* Spec after a class name, e.g. "Paladin · Holy" */
 .spec-tag { color: var(--muted); font-weight: 500; }
+
+/* ---------- Logs ---------- */
+.log-list { display: flex; flex-direction: column; }
+.log-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); border-radius: 8px; }
+.log-row:hover { background: var(--accent-soft); text-decoration: none; }
+.log-row:last-child { border-bottom: 0; }
+.log-title { font-weight: 600; }
+.log-highlights { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+.log-highlight { background: var(--panel); border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border)); border-radius: var(--radius); padding: 0.9rem 1rem; }
+.log-highlight-value { font-family: var(--font-head); font-size: 1.25rem; font-weight: 600; margin: 0.15rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fight-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.fight-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.05rem; padding: 0.45rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font: inherit; font-weight: 600; font-size: 0.9rem; cursor: pointer; text-align: left; }
+.fight-chip.kill { border-color: color-mix(in srgb, var(--ok) 35%, var(--border)); }
+.fight-chip.wipe { color: color-mix(in srgb, var(--text) 75%, var(--muted)); }
+.fight-chip.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.meter { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
+.meter-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0.4rem; border-radius: 8px; }
+.meter-row.mine { background: var(--accent-soft); }
+.meter-rank { width: 1.4rem; text-align: right; font-variant-numeric: tabular-nums; }
+.meter-main { flex: 1; min-width: 0; }
+.meter-label { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; font-size: 0.92rem; }
+.meter-nums { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.meter-bar { height: 7px; border-radius: 999px; background: var(--panel-2); overflow: hidden; margin-top: 0.25rem; }
+.meter-bar span { display: block; height: 100%; border-radius: 999px; opacity: 0.85; }
+.plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.top-dps { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.25rem 0.7rem; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
+.keep-btn { width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 1.05rem; line-height: 1; cursor: pointer; flex: none; }
+.keep-btn:hover { color: var(--accent); border-color: var(--accent); }
+.keep-btn.on { color: #f5c542; border-color: color-mix(in srgb, #f5c542 50%, var(--border)); background: color-mix(in srgb, #f5c542 12%, transparent); }
