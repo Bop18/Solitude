@@ -639,3 +639,4 @@ h1 {
 .retail-item-name { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .retail-extras { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ilvl { color: var(--text); }
+html { scroll-behavior: smooth; }

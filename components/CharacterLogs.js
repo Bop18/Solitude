@@ -48,6 +48,11 @@ export default function CharacterLogs({ character }) {
 
   useEffect(() => { load().then(() => check()); }, [load, check]);
 
+  // Opened with #logs (from a "Logs" button)? Scroll down to here once the page has loaded
+  useEffect(() => {
+    if (window.location.hash === '#logs') setTimeout(() => document.getElementById('logs')?.scrollIntoView({ behavior: 'smooth' }), 150);
+  }, []);
+
   // How this character did in a log
   function mine(l) {
     const p = (l.data?.players ?? []).find((x) => x.name?.toLowerCase() === character.name.toLowerCase());
@@ -66,7 +71,7 @@ export default function CharacterLogs({ character }) {
   }
 
   return (
-    <section className="panel">
+    <section className="panel" id="logs" style={{ scrollMarginTop: 90 }}>
       <div className="row spread">
         <h2>Logs</h2>
         <button className="btn ghost small" onClick={() => check(true)} disabled={checking}>{checking ? 'Checking Warcraft Logs…' : 'Check Warcraft Logs'}</button>

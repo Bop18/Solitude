@@ -92,7 +92,7 @@ export default function ClassicCharacters({ dungeons, kills, lockouts, character
           </h2>
           <div className="row">
             <Link className="btn ghost small" href={`/characters/${sel.id}`}>Gear &amp; needs</Link>
-            <Link className="btn ghost small" href="/logs">Logs</Link>
+            <Link className="btn ghost small" href={`/characters/${sel.id}#logs`}>Logs</Link>
           </div>
         </div>
 

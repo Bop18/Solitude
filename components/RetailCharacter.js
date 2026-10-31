@@ -37,7 +37,7 @@ export default function RetailCharacter({ character }) {
         <h2>Gear{data?.avgIlvl ? <span className="muted small"> · item level {data.avgIlvl}</span> : null}</h2>
         <div className="row">
           <Link className="btn ghost small" href="/progress?game=retail">Progress</Link>
-          <Link className="btn ghost small" href="/logs">Logs</Link>
+          <a className="btn ghost small" href="#logs">Logs</a>
           <button className="btn ghost small" onClick={() => load(true)} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button>
         </div>
       </div>

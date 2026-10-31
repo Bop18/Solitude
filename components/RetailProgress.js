@@ -107,7 +107,7 @@ export default function RetailProgress() {
           <div className="row spread">
             <h2 style={{ color: classColor(sel.class) }}>{sel.name}{p?.spec ? <span className="muted small"> · {p.spec} {p.class}</span> : null}</h2>
             <div className="row">
-              <Link className="btn ghost small" href="/logs">Logs</Link>
+              <Link className="btn ghost small" href={`/characters/${sel.id}#logs`}>Logs</Link>
               <button className="btn ghost small" onClick={() => load(sel, true)} disabled={p?.loading}>{p?.loading ? 'Refreshing…' : 'Refresh'}</button>
             </div>
           </div>
