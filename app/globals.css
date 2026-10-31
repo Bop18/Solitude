@@ -615,3 +615,5 @@ h1 {
 .keep-btn { width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 1.05rem; line-height: 1; cursor: pointer; flex: none; }
 .keep-btn:hover { color: var(--accent); border-color: var(--accent); }
 .keep-btn.on { color: #f5c542; border-color: color-mix(in srgb, #f5c542 50%, var(--border)); background: color-mix(in srgb, #f5c542 12%, transparent); }
+.tabs a.star-tab { color: #e0b23a; font-size: 1.05rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+.tabs a.star-tab.active { background: color-mix(in srgb, #f5c542 15%, transparent); color: #f5c542; }

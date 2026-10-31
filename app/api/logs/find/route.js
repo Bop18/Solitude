@@ -183,10 +183,11 @@ export async function POST(request) {
       started_at: r.start ? new Date(r.start).toISOString() : null,
       ended_at: r.end ? new Date(r.end).toISOString() : null,
       found_for: r.characterIds,
+      auto: true, // personal: shows under My logs, not All logs
     }));
     if (fresh.length) {
       const { error: insErr } = await supabase.from('logs').insert(fresh);
-      if (insErr) return json({ error: insErr.message }, 500);
+      if (insErr) return json({ error: insErr.message.includes('auto') ? 'Run supabase/schema-17-log-source.sql in Supabase first.' : insErr.message }, 500);
       added = fresh.length;
     }
     for (const r of reports.filter((x) => byCode[x.code])) {

@@ -12,11 +12,10 @@ export default function LogsPage() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id;
-  const [view, setView] = useState('all'); // all | mine
+  const [view, setView] = useState('all'); // all | mine | kept
   const [myChars, setMyChars] = useState([]);
   const [picked, setPicked] = useState('all'); // 'all' or a character id
   const [finding, setFinding] = useState(false);
-  const [onlyKept, setOnlyKept] = useState(false);
   const [keeping, setKeeping] = useState({});
   const [findNote, setFindNote] = useState('');
   const [logs, setLogs] = useState([]);
@@ -87,8 +86,10 @@ export default function LogsPage() {
 
   const charsShown = picked === 'all' ? myChars : myChars.filter((c) => String(c.id) === String(picked));
   const has = (l, c) => (l.found_for ?? []).includes(c.id) || (l.data?.players ?? []).some((p) => p.name.toLowerCase() === c.name.toLowerCase());
-  let shownLogs = view === 'mine' ? logs.filter((l) => charsShown.some((c) => has(l, c))) : logs;
-  if (onlyKept) shownLogs = shownLogs.filter((l) => l.kept);
+  // All logs = ones pasted for the group; My logs = anything with my characters; ★ = kept
+  const shownLogs = view === 'mine' ? logs.filter((l) => charsShown.some((c) => has(l, c)))
+    : view === 'kept' ? logs.filter((l) => l.kept)
+    : logs.filter((l) => !l.auto);
 
   // ★ Keep: read the full report now and keep it for good (even if Warcraft Logs deletes it)
   async function toggleKeep(l) {
@@ -116,7 +117,7 @@ export default function LogsPage() {
       const res = await fetch('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
-        body: JSON.stringify({ url, eventId: eventId || null }),
+        body: JSON.stringify({ url, eventId: eventId || null, share: true }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
@@ -159,6 +160,7 @@ export default function LogsPage() {
       <nav className="tabs">
         <a href="#" className={view === 'all' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setView('all'); }}>All logs</a>
         <a href="#" className={view === 'mine' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setView('mine'); }}>My logs</a>
+        <a href="#" className={`star-tab ${view === 'kept' ? 'active' : ''}`} title="Kept logs" aria-label="Kept logs" onClick={(e) => { e.preventDefault(); setView('kept'); }}>★</a>
       </nav>
 
       {view === 'mine' && (
@@ -191,17 +193,12 @@ export default function LogsPage() {
       )}
 
       <section className="panel">
-        <div className="row spread">
-          <h2>{view === 'mine' ? (picked === 'all' ? 'Your logs' : `${charsShown[0]?.name ?? ''}'s logs`) : 'Saved logs'}</h2>
-          <label className="checkbox" style={{ margin: 0 }}>
-            <input type="checkbox" checked={onlyKept} onChange={(e) => setOnlyKept(e.target.checked)} /> Only ★ kept
-          </label>
-        </div>
-        <p className="muted small" style={{ marginTop: 0 }}>Press ★ on a log to keep it for good: the site reads the whole report straight away and stores it, so it stays even after it's gone from Warcraft Logs.</p>
+        <h2>{view === 'mine' ? (picked === 'all' ? 'Your logs' : `${charsShown[0]?.name ?? ''}'s logs`) : view === 'kept' ? 'Kept logs' : 'Group logs'}</h2>
         {!loaded ? <p className="muted">Loading…</p> : shownLogs.length === 0 ? (
           <p className="muted">{view === 'mine'
-            ? (onlyKept ? 'No kept logs here yet. Press ☆ on a log to keep it.' : finding ? 'Checking Warcraft Logs…' : 'No logs found for this character yet. Reports only show up once they are uploaded to Warcraft Logs as public or unlisted.')
-            : 'No logs yet. After a run, upload it with the Warcraft Logs uploader and paste the link above.'}</p>
+            ? (finding ? 'Checking Warcraft Logs…' : 'No logs found for this character yet. Reports only show up once they are uploaded to Warcraft Logs as public or unlisted.')
+            : view === 'kept' ? 'Nothing kept yet. Press ☆ on any log to keep it here for good.'
+            : 'No group logs yet. After a run, upload it with the Warcraft Logs uploader and paste the link above.'}</p>
         ) : (
           <div className="log-list">
             {shownLogs.map((l) => {

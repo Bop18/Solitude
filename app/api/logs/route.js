@@ -1,4 +1,5 @@
-// POST /api/logs  { url, eventId?, keep? }
+// POST /api/logs  { url, eventId?, keep?, share? }
+// share: true when someone pastes the link on the Logs page → it shows under All logs.
 // Reads a Warcraft Logs report and saves a summary of it in our database,
 // so it's easy to read and kept even if the report is deleted later.
 //
@@ -133,12 +134,19 @@ export async function POST(request) {
     }),
     ...(body.eventId ? { event_id: Number(body.eventId) } : {}),
     ...(body.keep ? { kept: true } : {}),
+    ...(body.share ? { auto: false } : {}),
     updated_at: new Date().toISOString(),
   };
 
-  const result = existing
-    ? await supabase.from('logs').update(row).eq('id', existing.id).select('id').single()
-    : await supabase.from('logs').insert({ code: parsed.code, ...row }).select('id').single();
+  const save = (r) => (existing
+    ? supabase.from('logs').update(r).eq('id', existing.id).select('id').single()
+    : supabase.from('logs').insert({ code: parsed.code, ...r }).select('id').single());
+  let result = await save(row);
+  // Older database (update 15/17 not run yet)? Save without those columns rather than failing.
+  if (result.error && /\b(auto|kept)\b/.test(result.error.message)) {
+    const { auto, kept, ...rest } = row; // eslint-disable-line no-unused-vars
+    result = await save(rest);
+  }
   if (result.error) return json({ error: result.error.message }, 500);
   return json({ ok: true, id: result.data.id, updated: !!existing, warning });
 }

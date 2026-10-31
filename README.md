@@ -57,6 +57,7 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    14. `supabase/schema-14-log-characters.sql` (which of your characters each log belongs to)
    15. `supabase/schema-15-keep-logs.sql` (★ Keep: store a log's full breakdown for good)
    16. `supabase/schema-16-game.sql` (each character's game: WoW: Forever, Classic or Retail)
+   17. `supabase/schema-17-log-source.sql` (All logs = pasted group logs; character searches stay under My logs)
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
