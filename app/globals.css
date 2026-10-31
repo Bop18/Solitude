@@ -653,3 +653,8 @@ html { scroll-behavior: smooth; }
 .loot-table tr.unneeded td { opacity: 0.75; }
 a.dungeon-card:hover { text-decoration: none; }
 .loot-view-bar { margin-bottom: 1rem; }
+
+/* ---------- Event sign-up (top of the event page) ---------- */
+.signup-panel.unanswered { border-color: var(--accent); box-shadow: 0 0 30px -16px var(--accent); }
+.signup-panel.answered-going { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
+.signup-panel.answered-going strong { color: var(--ok); }
