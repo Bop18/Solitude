@@ -40,6 +40,29 @@ function lastRetailReset(region, now = new Date()) {
 
 const cache = new Map(); // characterId → { at, body }
 
+// The current season's raids, from Blizzard's Adventure Journal (changes a few times a year).
+let seasonCache = null; // { at, region, data }
+async function currentSeasonRaids(region, bnet) {
+  if (seasonCache && seasonCache.region === region && Date.now() - seasonCache.at < 6 * 3600e3) return seasonCache.data;
+  const get = (path) => fetch(`https://${region}.api.blizzard.com/data/wow/${path}${path.includes('?') ? '&' : '?'}namespace=static-${region}&locale=en_GB`,
+    { headers: { Authorization: `Bearer ${bnet}` }, cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
+  const index = await get('journal-expansion/index');
+  const tiers = index?.tiers ?? [];
+  if (!tiers.length) return null;
+  const real = tiers.filter((t) => !/current season/i.test(t.name ?? ''));
+  const newest = real.reduce((a, b) => (b.id > a.id ? b : a), real[0]);
+  // Blizzard lists a "Current Season" entry with this season's raids; otherwise use the newest expansion
+  const season = tiers.find((t) => /current season/i.test(t.name ?? '')) ?? newest;
+  const exp = await get(`journal-expansion/${season.id}`);
+  const raids = await Promise.all((exp?.raids ?? []).map(async (r) => {
+    const inst = await get(`journal-instance/${r.id}`);
+    return { id: r.id, name: r.name, bosses: (inst?.encounters ?? []).map((e) => e.name) };
+  }));
+  const data = { expansion: newest?.name ?? null, raids };
+  if (raids.length) seasonCache = { at: Date.now(), region, data };
+  return data;
+}
+
 export async function POST(request) {
   if (!process.env.BLIZZARD_CLIENT_ID || !process.env.BLIZZARD_CLIENT_SECRET) {
     return json({ error: 'Retail progress needs the Battle.net keys (see README → Battle.net).' }, 501);
@@ -85,28 +108,47 @@ export async function POST(request) {
       rating: r.mythic_rating?.rating ?? r.map_rating?.rating ?? null,
     })).sort((a, b) => b.level - a.level || b.at - a.at);
 
-    // Current expansion = the last one Blizzard lists
-    const expansions = raids.expansions ?? [];
-    const current = expansions[expansions.length - 1];
-    const raidList = (current?.instances ?? []).map((inst) => ({
-      name: inst.instance?.name ?? '?',
-      modes: (inst.modes ?? []).map((m) => {
-        const encounters = (m.progress?.encounters ?? []).map((e) => ({
-          name: e.encounter?.name ?? '?',
-          kills: e.completed_count ?? 0,
-          lastKill: e.last_kill_timestamp ?? null,
-          thisWeek: !!e.last_kill_timestamp && e.last_kill_timestamp >= reset.getTime(),
-        }));
+    const modesOf = (inst, bosses = []) => (inst?.modes ?? []).map((m) => {
+      const killed = Object.fromEntries((m.progress?.encounters ?? []).map((e) => [e.encounter?.name, e]));
+      // Every boss in journal order (Blizzard's profile only lists the ones you've killed)
+      const names = bosses.length ? [...bosses, ...Object.keys(killed).filter((n) => !bosses.includes(n))] : Object.keys(killed);
+      const encounters = names.map((name) => {
+        const e = killed[name];
         return {
-          difficulty: m.difficulty?.name ?? m.difficulty?.type ?? '?',
-          type: m.difficulty?.type ?? null,
-          done: m.progress?.completed_count ?? 0,
-          total: m.progress?.total_count ?? encounters.length,
-          thisWeek: encounters.filter((e) => e.thisWeek).length,
-          encounters,
+          name,
+          kills: e?.completed_count ?? 0,
+          lastKill: e?.last_kill_timestamp ?? null,
+          thisWeek: !!e?.last_kill_timestamp && e.last_kill_timestamp >= reset.getTime(),
         };
-      }),
-    }));
+      });
+      return {
+        difficulty: m.difficulty?.name ?? m.difficulty?.type ?? '?',
+        type: m.difficulty?.type ?? null,
+        done: m.progress?.completed_count ?? 0,
+        total: m.progress?.total_count ?? (bosses.length || encounters.length),
+        thisWeek: encounters.filter((e) => e.thisWeek).length,
+        encounters,
+      };
+    });
+
+    // The character's progress per raid (any expansion), by journal instance id
+    const progressById = {};
+    for (const exp of raids.expansions ?? []) for (const inst of exp.instances ?? []) progressById[inst.instance?.id] = inst;
+
+    let raidList;
+    let expansionName;
+    const season = await currentSeasonRaids(region, bnet).catch(() => null);
+    if (season?.raids?.length) {
+      // This season's raids, even ones the character hasn't set foot in yet
+      expansionName = season.expansion;
+      raidList = season.raids.map((r) => ({ name: r.name, bosses: r.bosses, modes: modesOf(progressById[r.id], r.bosses) }));
+    } else {
+      // Couldn't read the journal: fall back to the newest expansion the character has kills in
+      const expansions = raids.expansions ?? [];
+      const current = expansions[expansions.length - 1];
+      expansionName = current?.expansion?.name ?? null;
+      raidList = (current?.instances ?? []).map((inst) => ({ name: inst.instance?.name ?? '?', bosses: [], modes: modesOf(inst) }));
+    }
 
     const out = {
       id: c.id,
@@ -119,7 +161,7 @@ export async function POST(request) {
       rating: mplus.current_mythic_rating?.rating ?? null,
       ratingColor: mplus.current_mythic_rating?.color ?? null,
       weekRuns,
-      expansion: current?.expansion?.name ?? null,
+      expansion: expansionName,
       raids: raidList,
       resetAt: reset.getTime(),
       region,

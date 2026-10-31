@@ -12,11 +12,16 @@ const rgb = (c) => (c ? `rgb(${c.r}, ${c.g}, ${c.b})` : undefined);
 
 /** Best raid progress of the current raid, e.g. "6/8 H" */
 function raidSummary(p) {
-  const raid = p?.raids?.[p.raids.length - 1];
-  if (!raid) return null;
+  // This season's raid with the best progress (highest difficulty first)
   const order = ['MYTHIC', 'HEROIC', 'NORMAL', 'LFR'];
-  const mode = [...raid.modes].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)).find((m) => m.done > 0);
-  return mode ? { raid: raid.name, text: `${mode.done}/${mode.total} ${SHORT[mode.type] ?? mode.difficulty}` } : null;
+  let best = null;
+  for (const raid of p?.raids ?? []) {
+    const mode = [...raid.modes].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)).find((m) => m.done > 0);
+    if (!mode) continue;
+    const rank = (4 - order.indexOf(mode.type)) * 100 + mode.done;
+    if (!best || rank > best.rank) best = { rank, raid: raid.name, text: `${mode.done}/${mode.total} ${SHORT[mode.type] ?? mode.difficulty}` };
+  }
+  return best;
 }
 
 // Progress page → Retail: each retail character's M+ week, rating and raid progress from Blizzard.
@@ -86,7 +91,7 @@ export default function RetailProgress() {
                         <td>{d.ilvl ?? '—'}</td>
                         <td><strong style={{ color: rgb(d.ratingColor) }}>{d.rating != null ? Math.round(d.rating) : '—'}</strong></td>
                         <td>{d.weekRuns.length ? <>{d.weekRuns.length} <span className="muted small">· best +{d.weekRuns[0].level}</span></> : <span className="muted">0</span>}</td>
-                        <td>{raid ? <>{raid.text} <span className="muted small">{raid.raid}</span></> : <span className="muted">—</span>}</td>
+                        <td>{raid ? <>{raid.text} <span className="muted small">{raid.raid}</span></> : <span className="muted">Not started</span>}</td>
                       </>
                     )}
                   </tr>
@@ -136,10 +141,15 @@ export default function RetailProgress() {
               )}
               <p className="muted small">Blizzard lists your best run in each dungeon this week.</p>
 
-              <h3>Raids{p.expansion ? ` · ${p.expansion}` : ''}</h3>
-              {p.raids.length === 0 ? <p className="muted">No raid kills in this expansion yet.</p> : p.raids.slice().reverse().map((raid) => (
+              <h3>This season&apos;s raids{p.expansion ? ` · ${p.expansion}` : ''}</h3>
+              {p.raids.length === 0 ? <p className="muted">No raids found for this season.</p> : p.raids.map((raid) => (
                 <div key={raid.name} className="retail-raid">
                   <strong>{raid.name}</strong>
+                  {raid.modes.length === 0 && (
+                    <p className="muted small" style={{ margin: '0.3rem 0 0' }}>
+                      Not started yet{raid.bosses?.length ? ` · ${raid.bosses.length} bosses: ${raid.bosses.join(', ')}` : ''}
+                    </p>
+                  )}
                   <div className="retail-modes">
                     {raid.modes.map((m) => (
                       <div key={m.difficulty} className="retail-mode">
