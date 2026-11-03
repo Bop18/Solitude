@@ -19,6 +19,7 @@ const LINKS = [
   { href: '/dungeons', label: 'Dungeons' },
   { href: '/loot/history', label: 'Loot' },
   { href: '/logs', label: 'Logs' },
+  { href: '/guides', label: 'Guides' },
 ];
 
 const PUBLIC_PATHS = ['/login'];

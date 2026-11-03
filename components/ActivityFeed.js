@@ -20,8 +20,25 @@ export function timeAgo(iso) {
 
 const ICONS = { level: '⬆️', loot: '🎁', event: '📅', character: '✨', kill: '⚔️' };
 
-export default function ActivityFeed({ limit = 15 }) {
+/** Squash runs of boss kills in the same place into one line ("First kills in Molten Core: A, B, C"). */
+function collapse(rows) {
+  const out = [];
+  for (const a of rows) {
+    const prev = out[out.length - 1];
+    if (a.kind === 'kill' && prev?.kind === 'kill' && (prev.dungeon_id ?? prev.dungeons?.id) === (a.dungeon_id ?? a.dungeons?.id)
+      && Math.abs(new Date(prev.created_at) - new Date(a.created_at)) < 12 * 3600e3) {
+      prev.bosses = [...(prev.bosses ?? [prev.detail]), a.detail];
+      continue;
+    }
+    out.push({ ...a });
+  }
+  return out;
+}
+
+// Dashboard activity: the latest few, with "Show more" for the rest (so it never gets endless).
+export default function ActivityFeed({ limit = 40, initial = 6 }) {
   const [rows, setRows] = useState([]);
+  const [shown, setShown] = useState(initial);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
@@ -38,7 +55,7 @@ export default function ActivityFeed({ limit = 15 }) {
         ({ data, error } = await supabase.from('activity').select(base).order('created_at', { ascending: false }).limit(limit));
       }
       if (error) setError(error.message);
-      setRows(data ?? []);
+      setRows(collapse(data ?? []));
       setLoaded(true);
     })();
   }, [limit]);
@@ -57,6 +74,14 @@ export default function ActivityFeed({ limit = 15 }) {
           ? <><strong>{a.profiles?.display_name ?? 'Someone'}</strong> planned <Link href={`/events/${a.events.id}`}>{a.events.title}</Link></>
           : <><strong>{a.profiles?.display_name ?? 'Someone'}</strong> planned a run</>;
       case 'kill':
+        if (a.bosses?.length > 1) {
+          return (
+            <>
+              First kills{a.dungeons && <> in <Link href={`/dungeons/${a.dungeons.id}`}>{a.dungeons.name}</Link></>}:{' '}
+              <strong>{a.bosses.slice().reverse().join(', ')}</strong>
+            </>
+          );
+        }
         return (
           <>
             First kill: <strong>{a.detail}</strong>
@@ -77,13 +102,21 @@ export default function ActivityFeed({ limit = 15 }) {
 
   return (
     <div className="feed">
-      {rows.map((a) => (
+      {rows.slice(0, shown).map((a) => (
         <div key={a.id} className="feed-item">
           <span className="feed-icon" aria-hidden>{ICONS[a.kind]}</span>
           <div className="feed-text">{text(a)}</div>
           <span className="feed-time">{timeAgo(a.created_at)}</span>
         </div>
       ))}
+      {(rows.length > shown || shown > initial) && (
+        <div className="row" style={{ marginTop: '0.5rem' }}>
+          {rows.length > shown && (
+            <button className="btn ghost small" onClick={() => setShown((n) => n + 10)}>Show more ({rows.length - shown})</button>
+          )}
+          {shown > initial && <button className="btn ghost small" onClick={() => setShown(initial)}>Show less</button>}
+        </div>
+      )}
     </div>
   );
 }
