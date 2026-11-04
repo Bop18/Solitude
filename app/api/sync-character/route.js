@@ -116,38 +116,46 @@ export async function POST(request) {
   try {
     const bnet = await blizzardToken();
     const headers = { Authorization: `Bearer ${bnet}` };
-    let profileRes, equipRes, used = null, lastStatus = 404;
-    const tried = [];
+    let profileRes, equipRes, used = null;
+    const tried = [];          // "profile-forever/normal-eu/bob → 404"
+    const statuses = {};        // namespace → statuses seen
+    const realmsSeen = {};      // namespace → realm names Blizzard lists
     search:
     for (const ns of tryList) {
       const realms = await realmsFor(ns, region, headers);
+      if (realms?.length) realmsSeen[ns] = realms.map((r) => r.name);
       const query = `?namespace=${ns}-${region}&locale=en_GB`;
       for (const realm of realmCandidates(character.realm, realms)) {
         for (const who of nameCandidates(character.name)) {
           const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realm)}/${encodeURIComponent(who)}`;
-          tried.push(`${ns}/${realm}/${who}`);
           profileRes = await fetch(base + query, { headers, cache: 'no-store' });
-          if (!profileRes.ok) { lastStatus = profileRes.status; continue; }
+          tried.push(`${ns}/${realm}/${who} → ${profileRes.status}`);
+          (statuses[ns] ??= []).push(profileRes.status);
+          if (!profileRes.ok) continue;
+          // Found the character. Gear is a bonus: keep the level even if equipment isn't available.
           equipRes = await fetch(base + '/equipment' + query, { headers, cache: 'no-store' });
-          if (equipRes.ok) { used = ns; break search; }
-          lastStatus = equipRes.status;
+          used = ns;
+          break search;
         }
       }
     }
 
-    if (!used && lastStatus === 404) {
-      return json({
-        error: `Blizzard couldn't find ${character.name} on ${character.realm} (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once in game. Blizzard only updates profiles when you log out.`,
-        tried: tried.slice(0, 20),
-      }, 404);
-    }
     if (!used) {
-      return json({ error: `Blizzard's API returned an error (${lastStatus}). It may not support this game version yet.` }, 502);
+      // A 404 in a game version that exists = the character isn't there (yet)
+      const foundGame = Object.entries(statuses).find(([, list]) => list.includes(404));
+      const realmList = Object.entries(realmsSeen).map(([ns, names]) => `${ns.replace('profile-', '')}: ${names.slice(0, 8).join(', ')}`).join(' | ');
+      return json({
+        error: foundGame
+          ? `Blizzard couldn't find ${character.name} on "${character.realm}" (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once (Blizzard only updates on logout; brand new characters can take a while).${realmList ? ` Servers Blizzard lists: ${realmList}.` : ''}`
+          : `Blizzard's API didn't accept any of the game versions it tried (${[...new Set(Object.values(statuses).flat())].join(', ') || 'no answer'}). Send this to Claude: ${tried.slice(0, 6).join('; ')}`,
+        tried: tried.slice(0, 30),
+        realms: realmsSeen,
+      }, foundGame ? 404 : 502);
     }
     if (!forced && !['retail', 'classic'].includes(character.game)) workingNamespace[region] = used;
 
     const profile = await profileRes.json();
-    const equipment = await equipRes.json();
+    const equipment = equipRes?.ok ? await equipRes.json() : { equipped_items: [] };
 
     const items = (equipment.equipped_items ?? [])
       .map((e) => ({
