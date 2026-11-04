@@ -24,13 +24,16 @@ const workingNamespace = {}; // region → namespace that last found a character
 const realmCache = {};       // "ns-region" → [{ slug, name }] (null if that game version doesn't exist)
 
 /** Every realm (or WoW: Forever ruleset server) Blizzard lists for a game version. */
+const realmStatus = {}; // "ns-region" → HTTP status of Blizzard's server list (for error messages)
 async function realmsFor(ns, region, headers) {
   const key = `${ns}-${region}`;
-  if (key in realmCache) return realmCache[key];
+  const hit = realmCache[key];
+  if (hit && (hit.list || Date.now() - hit.at < 5 * 60_000)) return hit.list; // retry failures after 5 min
   const dynamic = ns.replace(/^profile/, 'dynamic');
   const res = await fetch(`https://${region}.api.blizzard.com/data/wow/realm/index?namespace=${dynamic}-${region}&locale=en_GB`, { headers, cache: 'no-store' });
+  realmStatus[key] = res.status;
   const list = res.ok ? ((await res.json()).realms ?? []).map((r) => ({ slug: r.slug, name: typeof r.name === 'string' ? r.name : r.name?.en_GB ?? r.name?.en_US ?? r.slug })) : null;
-  realmCache[key] = list;
+  realmCache[key] = { list, at: Date.now() };
   return list;
 }
 
@@ -54,7 +57,11 @@ function realmCandidates(typed, realms) {
 
 /** Name spellings to try (lower case, as Blizzard's API wants). */
 function nameCandidates(name) {
-  return [name.trim().toLowerCase()];
+  // WoW: Forever names can be "First Last": try the spellings Blizzard might use
+  const full = name.trim().toLowerCase().replace(/\s+/g, ' ');
+  const words = full.split(' ');
+  if (words.length === 1) return [full];
+  return [...new Set([words.join(''), words[0], words.join('-'), full])];
 }
 
 let cachedToken = null; // { token, expires }
@@ -125,7 +132,12 @@ export async function POST(request) {
       const realms = await realmsFor(ns, region, headers);
       if (realms?.length) realmsSeen[ns] = realms.map((r) => r.name);
       const query = `?namespace=${ns}-${region}&locale=en_GB`;
-      for (const realm of realmCandidates(character.realm, realms)) {
+      const guesses = realmCandidates(character.realm, realms);
+      if (!realms && ns.includes('forever')) {
+        const base = realmSlug(character.realm ?? '');
+        guesses.push(`${base}-${region}`, `forever-${base}`, `${region}-${base}`);
+      }
+      for (const realm of [...new Set(guesses)]) {
         for (const who of nameCandidates(character.name)) {
           const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realm)}/${encodeURIComponent(who)}`;
           profileRes = await fetch(base + query, { headers, cache: 'no-store' });
@@ -144,9 +156,11 @@ export async function POST(request) {
       // A 404 in a game version that exists = the character isn't there (yet)
       const foundGame = Object.entries(statuses).find(([, list]) => list.includes(404));
       const realmList = Object.entries(realmsSeen).map(([ns, names]) => `${ns.replace('profile-', '')}: ${names.slice(0, 8).join(', ')}`).join(' | ');
+      const foreverTries = tried.filter((t) => t.startsWith('profile-forever/'));
+      const foreverInfo = ` WoW: Forever check: server list ${realmStatus[`profile-forever-${region}`] ?? 'not asked'}; tried ${foreverTries.slice(0, 8).join(', ') || 'nothing'}.`;
       return json({
         error: foundGame
-          ? `Blizzard couldn't find ${character.name} on "${character.realm}" (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once (Blizzard only updates on logout; brand new characters can take a while).${realmList ? ` Servers Blizzard lists: ${realmList}.` : ''}`
+          ? `Blizzard couldn't find ${character.name} on "${character.realm}" (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once (Blizzard only updates on logout; brand new characters can take a while).${foreverInfo}${realmList ? ` Servers Blizzard lists: ${realmList}.` : ''}`
           : `Blizzard's API didn't accept any of the game versions it tried (${[...new Set(Object.values(statuses).flat())].join(', ') || 'no answer'}). Send this to Claude: ${tried.slice(0, 6).join('; ')}`,
         tried: tried.slice(0, 30),
         realms: realmsSeen,
