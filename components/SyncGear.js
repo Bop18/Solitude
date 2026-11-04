@@ -44,7 +44,8 @@ export default function SyncGear({ character, onSynced }) {
     setBusy(true); setError(''); setMessage('');
     try {
       const parsed = parseAddonExport(text);
-      if (parsed.name.toLowerCase() !== character.name.toLowerCase()
+      const first = (n) => n.trim().toLowerCase().split(/\s+/)[0]; // the game only shows the first name ("Lowkey" for "Lowkey Good")
+      if (first(parsed.name) !== first(character.name)
         && !confirm(`That text is for ${parsed.name}, but this page is ${character.name}. Import it anyway?`)) {
         setBusy(false);
         return;
