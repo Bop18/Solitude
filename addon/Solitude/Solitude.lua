@@ -20,6 +20,24 @@ local SLOTS = { 1, 2, 3, 15, 5, 9, 10, 6, 7, 8, 11, 12, 13, 14, 16, 17, 18 }
 local KEEP_DAYS = 45
 local MAX_KILLS = 600
 
+-- ---------- Works on every game version ----------
+-- WoW: Forever (and Midnight) removed some old functions; use the newer C_ versions when needed.
+local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo) or function() return nil end
+
+-- Some values (like player names during fights) can be "secret" on newer clients:
+-- addons aren't allowed to read them, so treat them as unknown instead of erroring.
+local function plain(v)
+  if v == nil then return nil end
+  if issecretvalue and issecretvalue(v) then return nil end
+  return v
+end
+
+local function unitName(unit)
+  local ok, name, realm = pcall(UnitName, unit)
+  if not ok then return nil end
+  return plain(name), plain(realm)
+end
+
 local function now()
   return (GetServerTime and GetServerTime()) or time()
 end
@@ -33,7 +51,7 @@ local function clean(s)
 end
 
 local function charKey()
-  return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+  return (unitName("player") or "?") .. "-" .. (GetRealmName() or "?")
 end
 
 local function charRecord()
@@ -47,7 +65,7 @@ end
 local function snapshotCharacter()
   local c = charRecord()
   local _, classToken = UnitClass("player")
-  c.name = UnitName("player")
+  c.name = unitName("player")
   c.realm = GetRealmName()
   c.level = UnitLevel("player")
   c.class = classToken
@@ -98,23 +116,40 @@ end
 -- ---------- Boss kills ----------
 local recent = {} -- encounterID → time, so ENCOUNTER_END and BOSS_KILL don't double count
 
-local function groupMembers()
+-- Who's in the group. Remembered outside fights too, because names can be hidden during them.
+local lastGroup = {}
+
+local function readGroup()
   local members = {}
   if IsInRaid and IsInRaid() then
     for i = 1, GetNumGroupMembers() do
-      local name = GetRaidRosterInfo(i)
+      local ok, name = pcall(GetRaidRosterInfo, i)
+      name = ok and plain(name) or nil
       if name then table.insert(members, name) end
     end
   else
-    local me = UnitName("player")
+    local me = unitName("player")
     if me then table.insert(members, me) end
     for i = 1, 4 do
-      local name, realm = UnitName("party" .. i)
+      local name, realm = unitName("party" .. i)
       if name then
         table.insert(members, (realm and realm ~= "") and (name .. "-" .. realm) or name)
       end
     end
   end
+  return members
+end
+
+local function rememberGroup()
+  local ok, members = pcall(readGroup)
+  if ok and #members > 0 then lastGroup = members end
+end
+
+local function groupMembers()
+  local ok, members = pcall(readGroup)
+  members = ok and members or {}
+  -- Names hidden right now? Use the group as it was just before the pull
+  if #members <= 1 and #lastGroup > #members then return lastGroup end
   return members
 end
 
@@ -161,6 +196,8 @@ frame:RegisterEvent("PLAYER_LEVEL_UP")
 frame:RegisterEvent("PLAYER_LOGOUT")
 frame:RegisterEvent("UPDATE_INSTANCE_INFO")
 frame:RegisterEvent("ENCOUNTER_END")
+pcall(frame.RegisterEvent, frame, "GROUP_ROSTER_UPDATE")
+pcall(frame.RegisterEvent, frame, "ENCOUNTER_START")
 pcall(frame.RegisterEvent, frame, "BOSS_KILL") -- not in every game version
 
 frame:SetScript("OnEvent", function(_, event, ...)
@@ -171,7 +208,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
       SolitudeDB.kills = SolitudeDB.kills or {}
       prune()
     end
+  elseif event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_START" then
+    rememberGroup()
   elseif event == "PLAYER_ENTERING_WORLD" then
+    rememberGroup()
     snapshotCharacter()
     if RequestRaidInfo then RequestRaidInfo() end
   elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_LEVEL_UP" then
@@ -180,10 +220,13 @@ frame:SetScript("OnEvent", function(_, event, ...)
     snapshotLockouts()
   elseif event == "ENCOUNTER_END" then
     local encounterID, encounterName, _, groupSize, success = ...
-    if success == 1 or success == true then recordKill(encounterID, encounterName, groupSize) end
+    if success == 1 or success == true then
+      local ok, err = pcall(recordKill, plain(encounterID), plain(encounterName), plain(groupSize))
+      if not ok then say("couldn't record that kill (" .. tostring(err) .. ")") end
+    end
   elseif event == "BOSS_KILL" then
     local encounterID, encounterName = ...
-    recordKill(encounterID, encounterName)
+    pcall(recordKill, plain(encounterID), plain(encounterName))
   elseif event == "PLAYER_LOGOUT" then
     snapshotCharacter()
   end
@@ -192,7 +235,7 @@ end)
 -- ---------- /solitude ----------
 local function BuildExport()
   local _, classToken = UnitClass("player")
-  local header = table.concat({ "SOL1", clean(UnitName("player")), clean(GetRealmName()), UnitLevel("player"), classToken or "", clean(UnitRace("player")) }, "^")
+  local header = table.concat({ "SOL1", clean(unitName("player")), clean(GetRealmName()), UnitLevel("player"), classToken or "", clean(UnitRace("player")) }, "^")
   local parts = { header }
   local missing = 0
   for _, slot in ipairs(SLOTS) do
