@@ -160,6 +160,14 @@ export async function POST(request) {
       const realmList = Object.entries(realmsSeen).map(([ns, names]) => `${ns.replace('profile-', '')}: ${names.slice(0, 8).join(', ')}`).join(' | ');
       const foreverTries = tried.filter((t) => t.startsWith('profile-forever/'));
       const foreverInfo = ` WoW: Forever check: server list ${realmStatus[`profile-forever-${region}`] ?? 'not asked'}; tried ${foreverTries.slice(0, 8).join(', ') || 'nothing'}.`;
+      // WoW: Forever not on Blizzard's website API yet: say so plainly instead of a wall of detail
+      if (realmStatus[`profile-forever-${region}`] === 404 && !['retail', 'classic'].includes(character.game)) {
+        return json({
+          error: `Battle.net Sync isn't available for WoW: Forever yet: Blizzard hasn't added it to their website data. Use "Paste from addon" for now; this button will start working by itself once Blizzard turns it on.`,
+          detail: foreverInfo.trim(),
+          tried: tried.slice(0, 30),
+        }, 503);
+      }
       return json({
         error: foundGame
           ? `Blizzard couldn't find ${character.name} on "${character.realm}" (${region.toUpperCase()}). Check the spelling and ruleset, and log out of the character once (Blizzard only updates on logout; brand new characters can take a while).${foreverInfo}${realmList ? ` Servers Blizzard lists: ${realmList}.` : ''}`
