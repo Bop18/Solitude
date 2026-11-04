@@ -51,6 +51,8 @@ export default function SyncGear({ character, onSynced }) {
         return;
       }
       const r = await applySync(supabase, character.id, { level: parsed.level, items: parsed.items, source: 'addon' });
+      // Remember the exact in-game realm so Battle.net Sync can find it (ignored if the column isn't there yet)
+      if (parsed.realm) await supabase.from('characters').update({ server_name: parsed.realm }).eq('id', character.id).then(() => {}, () => {});
       setMessage(summary({ ...r, level: parsed.level }, 'the addon'));
       setText('');
       setMode(null);

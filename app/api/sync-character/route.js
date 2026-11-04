@@ -137,6 +137,8 @@ export async function POST(request) {
         const base = realmSlug(character.realm ?? '');
         guesses.push(`${base}-${region}`, `forever-${base}`, `${region}-${base}`);
       }
+      // The exact in-game realm (e.g. "CAMWOW EU5 Realm 4 PvP"), saved when the addon text was pasted
+      if (character.server_name) guesses.unshift(realmSlug(character.server_name), realmSlug(character.server_name).replace(/-/g, ''));
       for (const realm of [...new Set(guesses)]) {
         for (const who of nameCandidates(character.name)) {
           const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realm)}/${encodeURIComponent(who)}`;
