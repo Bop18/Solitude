@@ -64,6 +64,7 @@ export default function BattleNetLogin() {
       <h2>Battle.net</h2>
       <p className="muted small">
         Connect once and the site keeps your WoW: Forever characters&apos; levels up to date by itself whenever you open it.
+        Blizzard only updates a character when you log out of it (or go to character select), so level up, log out, then it shows here.
         Blizzard&apos;s login lasts a day; after that, press Reconnect (one click).
       </p>
       {!CLIENT_ID && <p className="error small">The site owner needs to add NEXT_PUBLIC_BLIZZARD_CLIENT_ID in Vercel first.</p>}
@@ -76,6 +77,7 @@ export default function BattleNetLogin() {
             {info.expired
               ? <button className="btn small" onClick={startBattleNetLogin}>Reconnect</button>
               : <span className="muted small">· {info.found ?? 0} WoW: Forever character{info.found === 1 ? '' : 's'} found{info.updated ? `, ${info.updated} kept up to date` : ''}</span>}
+            {!info.expired && <button className="btn small" onClick={async () => { setBusy(true); await load(); setBusy(false); window.dispatchEvent(new Event('solitude:synced')); }} disabled={busy}>{busy ? 'Updating…' : '⟳ Update now'}</button>}
             <button className="btn ghost small" onClick={disconnect} disabled={busy}>Disconnect</button>
           </div>
           {info.expired && <p className="muted small" style={{ margin: 0 }}>Your Battle.net login ran out. Reconnect to keep levels updating.</p>}
