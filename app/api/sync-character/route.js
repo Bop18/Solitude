@@ -165,7 +165,9 @@ export async function POST(request) {
       // WoW: Forever not on Blizzard's website API yet: say so plainly instead of a wall of detail
       if (realmStatus[`profile-forever-${region}`] === 404 && !['retail', 'classic'].includes(character.game)) {
         return json({
-          error: `Battle.net Sync isn't available for WoW: Forever yet: Blizzard hasn't added it to their website data. Use "Paste from addon" for now; this button will start working by itself once Blizzard turns it on.`,
+          error: character.bnet_id
+            ? `Your level updates from your Battle.net login, but Blizzard doesn't share WoW: Forever gear with websites yet. Use "Paste from addon" for gear; this button will start working by itself once Blizzard adds it.`
+            : `Battle.net Sync isn't available for WoW: Forever yet: Blizzard hasn't added it to their website data. Use "Paste from addon" for now; this button will start working by itself once Blizzard turns it on.`,
           detail: foreverInfo.trim(),
           tried: tried.slice(0, 30),
         }, 503);
