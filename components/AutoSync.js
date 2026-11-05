@@ -13,6 +13,16 @@ const set = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 export default function AutoSync({ userId }) {
   useEffect(() => {
     if (!userId) return;
+    // Logged in with Battle.net? Refresh levels from it (at most every 30 minutes)
+    const lastLink = Number(get('bnet-link-at') ?? 0);
+    if (Date.now() - lastLink > 30 * 60e3) {
+      set('bnet-link-at', String(Date.now()));
+      supabase.auth.getSession().then(({ data }) => fetch('/api/bnet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+        body: JSON.stringify({ action: 'refresh' }),
+      })).then((r) => r?.json()).then((r) => { if (r?.updated) window.dispatchEvent(new Event('solitude:synced')); }).catch(() => {});
+    }
     // Battle.net not set up on this site: don't keep asking (checked again after a day)
     const off = Number(get('bnet-off') ?? 0);
     if (off && Date.now() - off < 86400e3) return;

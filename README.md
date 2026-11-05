@@ -122,6 +122,8 @@ Blizzard's official API. It works today for Classic Era characters. Whether it w
    - `BLIZZARD_CLIENT_ID` = your client ID
    - `BLIZZARD_CLIENT_SECRET` = your client secret
    - `BLIZZARD_REGION` = `eu` (or `us`)
+   - `NEXT_PUBLIC_BLIZZARD_CLIENT_ID` = your client ID again (for the "Log in with Battle.net" button; the ID isn't secret, the Secret is)
+   - On your Battle.net app (develop.battle.net → your client), add the Redirect URL `https://YOUR-SITE/bnet/callback`
    - `BLIZZARD_NAMESPACE`: **leave this out.** The site tries the likely WoW: Forever / Classic namespaces and remembers which one works. Only set it to force one (e.g. `profile-classic1x` for Classic Era).
 
    WoW: Forever has no realms, so on each character pick the **Ruleset** (Normal, PvP, RP, RP-PvP, Hardcore). The site works out which Blizzard server to use.

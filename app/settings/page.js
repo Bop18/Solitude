@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { ACCENTS, getAppearance, setAppearance, syncMainAccent } from '@/lib/theme';
 import { classColor } from '@/lib/wow';
+import BattleNetLogin from '@/components/BattleNetLogin';
 
 export default function SettingsPage() {
   const { session, profile, refreshProfile } = useAuth();
@@ -85,6 +86,8 @@ export default function SettingsPage() {
         </div>
         {!main && <p className="muted small">Add a character and the site will use your main&apos;s class colour automatically.</p>}
       </section>
+
+      <BattleNetLogin />
 
       <section className="panel">
         <h2>Your name</h2>

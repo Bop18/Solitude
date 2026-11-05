@@ -139,8 +139,10 @@ export async function POST(request) {
       }
       // The exact in-game realm (e.g. "CAMWOW EU5 Realm 4 PvP"), saved when the addon text was pasted
       if (character.server_name) guesses.unshift(realmSlug(character.server_name), realmSlug(character.server_name).replace(/-/g, ''));
+      // Exactly what Battle.net calls it (saved by "Log in with Battle.net")
+      if (character.bnet_realm) guesses.unshift(character.bnet_realm);
       for (const realm of [...new Set(guesses)]) {
-        for (const who of nameCandidates(character.name)) {
+        for (const who of [...new Set([character.bnet_name, ...nameCandidates(character.name)].filter(Boolean))]) {
           const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(realm)}/${encodeURIComponent(who)}`;
           profileRes = await fetch(base + query, { headers, cache: 'no-store' });
           tried.push(`${ns}/${realm}/${who} → ${profileRes.status}`);
