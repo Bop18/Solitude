@@ -80,6 +80,12 @@ export default function BattleNetLogin() {
             {!info.expired && <button className="btn small" onClick={async () => { setBusy(true); await load(); setBusy(false); window.dispatchEvent(new Event('solitude:synced')); }} disabled={busy}>{busy ? 'Updating…' : '⟳ Update now'}</button>}
             <button className="btn ghost small" onClick={disconnect} disabled={busy}>Disconnect</button>
           </div>
+          {!info.expired && info.checkedAt && (
+            <p className="muted small" style={{ margin: 0 }}>
+              Checked {new Date(info.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {(info.listed ?? []).length ? <> · Blizzard says: {info.listed.map((c) => `${c.name} level ${c.level}`).join(', ')}</> : null}
+            </p>
+          )}
           {info.expired && <p className="muted small" style={{ margin: 0 }}>Your Battle.net login ran out. Reconnect to keep levels updating.</p>}
           {!info.expired && info.found === 0 && (
             <p className="muted small" style={{ margin: 0 }}>Blizzard didn&apos;t list any WoW: Forever characters yet{info.apiStatus && info.apiStatus !== 200 ? ` (it answered ${info.apiStatus})` : ''}. Log out of the game once, then come back here.</p>

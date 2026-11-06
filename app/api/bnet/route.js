@@ -155,7 +155,8 @@ export async function POST(request) {
 
     // refresh
     const r = await updateRoster(supabase, userId, characters);
-    return json({ connected: true, battletag: link.battletag, expiresAt: link.expires_at, found: characters.length, apiStatus: status, ...r });
+    return json({ connected: true, battletag: link.battletag, expiresAt: link.expires_at, found: characters.length, apiStatus: status,
+      listed: characters.map((c) => ({ name: c.name, level: c.level })), checkedAt: new Date().toISOString(), ...r });
   } catch (e) {
     const msg = e.message ?? String(e);
     return json({ error: /bnet_|relation/.test(msg) ? 'Run supabase/schema-21-battlenet-login.sql in Supabase first.' : msg }, 500);

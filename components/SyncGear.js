@@ -30,7 +30,10 @@ export default function SyncGear({ character, onSynced }) {
         body: JSON.stringify({ characterId: character.id }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Sync failed (${res.status})`);
+      if (!res.ok) {
+        const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        throw new Error(`${body.error ?? `Sync failed (${res.status})`} (Checked ${at}${body.detail ? ` · ${body.detail.replace(/^WoW: Forever check: /, '')}` : ''})`);
+      }
       setMessage(summary(body, 'Battle.net'));
       onSynced?.();
     } catch (e) {
