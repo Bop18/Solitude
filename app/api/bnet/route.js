@@ -21,6 +21,7 @@ function rulesetFromRealm(name = '') {
   for (const r of RULESETS) if (new RegExp(`(^|\\W)${r.toLowerCase()}($|\\W)`).test(n)) return r;
   return 'Normal';
 }
+const slugOf = (b) => [b.name, b.surname].filter(Boolean).join('-').toLowerCase(); // "lowkey-good"
 const first = (n = '') => n.trim().toLowerCase().split(/[\s-]+/)[0];
 const CLASSES = ['Warrior', 'Paladin', 'Hunter', 'Rogue', 'Priest', 'Shaman', 'Mage', 'Warlock', 'Druid'];
 const pick = (v) => (typeof v === 'string' ? v : v?.en_GB ?? v?.en_US ?? null);
@@ -66,7 +67,7 @@ async function updateRoster(supabase, userId, list) {
   for (const b of list) {
     const match = forever.find((c) => c.bnet_id === b.id) ?? forever.find((c) => !c.bnet_id && first(c.name) === first(b.name));
     if (!match) { unmatched.push(b); continue; }
-    const patch = { bnet_id: b.id, bnet_name: b.name.toLowerCase(), bnet_realm: b.realmSlug, server_name: b.realmName || match.server_name };
+    const patch = { bnet_id: b.id, bnet_name: slugOf(b), bnet_realm: b.realmSlug, server_name: b.realmName || match.server_name };
     if (b.level && b.level !== match.level) patch.level = b.level;
     if (!match.realm && b.realmName) patch.realm = rulesetFromRealm(b.realmName);
     const { error: e } = await supabase.from('characters').update(patch).eq('id', match.id);
@@ -145,7 +146,7 @@ export async function POST(request) {
       const row = {
         owner: userId, name: b.name, level: b.level ?? 1, game: 'forever',
         class: CLASSES.includes(b.className) ? b.className : 'Warrior', race: b.race,
-        realm: rulesetFromRealm(b.realmName), server_name: b.realmName, bnet_id: b.id, bnet_name: b.name.toLowerCase(), bnet_realm: b.realmSlug,
+        realm: rulesetFromRealm(b.realmName), server_name: b.realmName, bnet_id: b.id, bnet_name: slugOf(b), bnet_realm: b.realmSlug,
         is_main: !(existing ?? []).length,
       };
       const { data, error } = await supabase.from('characters').insert(row).select('id').single();

@@ -132,6 +132,22 @@ export async function POST(request) {
       const realms = await realmsFor(ns, region, headers);
       if (realms?.length) realmsSeen[ns] = realms.map((r) => r.name);
       const query = `?namespace=${ns}-${region}&locale=en_GB`;
+      // WoW: Forever has no realms: characters are /profile/wow/character/{first}-{surname}
+      // (shows up from level 10, after logging out)
+      if (ns.includes('forever')) {
+        const words = character.name.trim().toLowerCase().split(/\s+/);
+        const slugs = [...new Set([character.bnet_name, words.join('-'), words[0]].filter(Boolean))];
+        for (const who of slugs) {
+          const base = `https://${region}.api.blizzard.com/profile/wow/character/${encodeURIComponent(who)}`;
+          profileRes = await fetch(base + query, { headers, cache: 'no-store' });
+          tried.push(`${ns}/${who} → ${profileRes.status}`);
+          (statuses[ns] ??= []).push(profileRes.status);
+          if (!profileRes.ok) continue;
+          equipRes = await fetch(base + '/equipment' + query, { headers, cache: 'no-store' });
+          used = ns;
+          break search;
+        }
+      }
       const guesses = realmCandidates(character.realm, realms);
       if (!realms && ns.includes('forever')) {
         const base = realmSlug(character.realm ?? '');
@@ -166,8 +182,8 @@ export async function POST(request) {
       if (realmStatus[`profile-forever-${region}`] === 404 && !['retail', 'classic'].includes(character.game)) {
         return json({
           error: character.bnet_id
-            ? `Your level updates from your Battle.net login, but Blizzard doesn't share WoW: Forever gear with websites yet. Use "Paste from addon" for gear; this button will start working by itself once Blizzard adds it.`
-            : `Battle.net Sync isn't available for WoW: Forever yet: Blizzard hasn't added it to their website data. Use "Paste from addon" for now; this button will start working by itself once Blizzard turns it on.`,
+            ? `Blizzard doesn't have this character's gear yet. WoW: Forever characters only appear from level 10, after you log out (it can take up to 40 minutes). Use "Paste from addon" until then.`
+            : `Blizzard doesn't have this character yet. WoW: Forever characters only appear from level 10, after you log out (it can take up to 40 minutes). Check the name is "First Surname" exactly as in game. Use "Paste from addon" until then.`,
           detail: foreverInfo.trim(),
           tried: tried.slice(0, 30),
         }, 503);
