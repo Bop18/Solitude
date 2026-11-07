@@ -23,6 +23,21 @@ export default function AutoSync({ userId }) {
         body: JSON.stringify({ action: 'refresh' }),
       })).then((r) => r?.json()).then((r) => { if (r?.updated) window.dispatchEvent(new Event('solitude:synced')); }).catch(() => {});
     }
+    // Everyone's characters, refreshed on the server (needs SUPABASE_SERVICE_ROLE_KEY).
+    // Any member opening the site keeps the whole group up to date; at most every 10 minutes per browser.
+    const lastAll = Number(get('sync-all-at') ?? 0);
+    const allOff = Number(get('sync-all-off') ?? 0);
+    if (Date.now() - lastAll > 10 * 60e3 && !(allOff && Date.now() - allOff < 86400e3)) {
+      set('sync-all-at', String(Date.now()));
+      supabase.auth.getSession().then(({ data }) => fetch('/api/sync-all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+      })).then(async (r) => {
+        if (r?.status === 501) { set('sync-all-off', String(Date.now())); return; }
+        const body = await r?.json().catch(() => null);
+        if (body?.updated) window.dispatchEvent(new Event('solitude:synced'));
+      }).catch(() => {});
+    }
     // Battle.net not set up on this site: don't keep asking (checked again after a day)
     const off = Number(get('bnet-off') ?? 0);
     if (off && Date.now() - off < 86400e3) return;
