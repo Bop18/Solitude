@@ -9,6 +9,7 @@ import ItemName from '@/components/ItemName';
 import WantControl from '@/components/WantControl';
 import RecordLoot from '@/components/RecordLoot';
 import ImportItems from '@/components/ImportItems';
+import ForeverItemDetails from '@/components/ForeverItemDetails';
 import BossTactics from '@/components/BossTactics';
 import DungeonGuide from '@/components/DungeonGuide';
 import RouteEditor from '@/components/RouteEditor';
@@ -266,6 +267,7 @@ export default function DungeonPage() {
           onChanged={load} onError={setError} emptyText="No loot listed for this one yet. Load it from Blizzard on the Dungeons page (Retail tab)." />
       ) : (<>
       {!hasGameData && <ImportItems onDone={load} />}
+      <ForeverItemDetails dungeon={dungeon} items={items} onDone={load} />
 
       {/* ---------- For your group ---------- */}
       {hasGameData && (

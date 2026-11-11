@@ -72,22 +72,36 @@ export async function POST(request) {
   try { body = await request.json(); } catch { /* none */ }
   const after = Math.max(200000, Number(body.after ?? 0) + 1); // page through, so unknown items don't block the rest
   const region = (process.env.BLIZZARD_REGION || 'eu').toLowerCase();
-  // WoW: Forever items are the new, high item IDs; only fill ones still missing details
-  const { data: todo, error } = await supabase.from('items').select('id, game_id, name, slot, item_type, kind, stats, icon')
-    .gte('game_id', after).is('icon', null).order('game_id').limit(40);
-  if (error) return json({ error: error.message }, 500);
-  if (!todo?.length) return json({ ok: true, filled: 0, done: true });
 
   const bnet = await blizzardToken();
   const headers = { Authorization: `Bearer ${bnet}` };
-  const namespaces = [process.env.BLIZZARD_FOREVER_STATIC, `static-forever-${region}`, `static-classic-forever-${region}`].filter(Boolean);
-  const get = async (path) => {
-    for (const ns of namespaces) {
-      const r = await fetch(`https://${region}.api.blizzard.com/data/wow/${path}?namespace=${ns}&locale=en_GB`, { headers, cache: 'no-store' }).catch(() => null);
-      if (r?.ok) return r.json();
+  const ns = await foreverNamespace(region, headers);
+  if (!ns.name) return json({ ok: false, error: `Blizzard's WoW: Forever item data wasn't found (${ns.tried.join(', ')}).`, tried: ns.tried, done: true });
+  const get = (path, extra = '') => fetch(`https://${region}.api.blizzard.com/data/wow/${path}?namespace=${ns.name}&locale=en_GB${extra}`, { headers, cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+  // 1. WoW: Forever loot typed in by name only: look up its game ID by name
+  let identified = 0;
+  if (!body.after) {
+    const { data: forever } = await supabase.from('dungeons').select('id').ilike('notes', '%forever%');
+    const ids = (forever ?? []).map((d) => d.id);
+    if (ids.length) {
+      const { data: unnamed } = await supabase.from('items').select('id, name').is('game_id', null).in('dungeon_id', ids).limit(40);
+      await Promise.all((unnamed ?? []).map(async (it) => {
+        const res = await get('search/item', `&name.en_GB=${encodeURIComponent(it.name)}&orderby=id:desc&_pageSize=20`);
+        const hit = (res?.results ?? []).map((r) => r.data).find((d) => (typeof d?.name === 'string' ? d.name : d?.name?.en_GB ?? d?.name?.en_US ?? '').toLowerCase() === it.name.toLowerCase());
+        if (!hit?.id) return;
+        const { error: e } = await supabase.from('items').update({ game_id: hit.id }).eq('id', it.id);
+        if (!e) identified++;
+      }));
     }
-    return null;
-  };
+  }
+
+  // 2. Icon, quality, item level and stats for WoW: Forever items (the new, high item IDs)
+  const { data: todo, error } = await supabase.from('items').select('id, game_id, name, slot, item_type, kind, stats, icon')
+    .gte('game_id', after).is('icon', null).order('game_id').limit(40);
+  if (error) return json({ error: error.message }, 500);
+  if (!todo?.length) return json({ ok: true, namespace: ns.name, identified, filled: 0, done: true });
 
   let filled = 0, missing = 0;
   await Promise.all(todo.map(async (it) => {
@@ -116,5 +130,20 @@ export async function POST(request) {
     const { error: e } = await supabase.from('items').update(patch).eq('id', it.id);
     if (!e) filled++;
   }));
-  return json({ ok: true, filled, notFound: missing, after: todo[todo.length - 1].game_id, done: todo.length < 40 });
+  return json({ ok: true, namespace: ns.name, identified, filled, notFound: missing, after: todo[todo.length - 1].game_id, done: todo.length < 40 });
+}
+
+// Which of Blizzard's item-data names WoW: Forever uses: test with a known WoW: Forever item (Reliquary Mantle)
+let nsCache = null;
+async function foreverNamespace(region, headers) {
+  if (nsCache?.name) return nsCache;
+  const candidates = [process.env.BLIZZARD_FOREVER_STATIC, `static-forever-${region}`, `static-classic-forever-${region}`,
+    `static-1.60.1_70399-forever-${region}`, `static-classic1x-${region}`, `static-classic-${region}`].filter(Boolean);
+  const tried = [];
+  for (const name of candidates) {
+    const r = await fetch(`https://${region}.api.blizzard.com/data/wow/item/273028?namespace=${name}&locale=en_GB`, { headers, cache: 'no-store' }).catch(() => null);
+    tried.push(`${name} → ${r?.status ?? 'no answer'}`);
+    if (r?.ok) { nsCache = { name, tried }; return nsCache; }
+  }
+  return { name: null, tried };
 }
