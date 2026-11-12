@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from './AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { SITE_NAME, SITE_ICON } from '@/lib/site';
@@ -10,17 +10,25 @@ import ThemeToggle from './ThemeToggle';
 import AutoSync from './AutoSync';
 import { syncMainAccent } from '@/lib/theme';
 
-const LINKS = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/roster', label: 'Roster' },
-  { href: '/availability', label: 'Availability' },
-  { href: '/events', label: 'Events' },
-  { href: '/progress', label: 'Progress' },
-  { href: '/dungeons', label: 'Dungeons' },
-  { href: '/loot/history', label: 'Loot' },
-  { href: '/logs', label: 'Logs' },
-  { href: '/guides', label: 'Guides' },
+// Side menu, grouped by what you're doing
+const GROUPS = [
+  { label: null, links: [{ href: '/', label: 'Dashboard' }] },
+  { label: 'Group', links: [
+    { href: '/roster', label: 'Roster' },
+    { href: '/availability', label: 'Availability' },
+    { href: '/events', label: 'Events' },
+  ] },
+  { label: 'Play', links: [
+    { href: '/dungeons', label: 'Dungeons' },
+    { href: '/progress', label: 'Progress' },
+    { href: '/guides', label: 'Guides' },
+  ] },
+  { label: 'Records', links: [
+    { href: '/loot/history', label: 'Loot history' },
+    { href: '/logs', label: 'Logs' },
+  ] },
 ];
+const isActive = (pathname, href) => pathname === href || (href !== '/' && pathname.startsWith(href.replace('/history', '')));
 
 const PUBLIC_PATHS = ['/login'];
 
@@ -29,6 +37,8 @@ export default function Shell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = PUBLIC_PATHS.includes(pathname);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMenuOpen(false); }, [pathname]); // close the phone menu after picking a page
 
   // Members-only: bounce logged-out visitors to the login page.
   useEffect(() => {
@@ -60,29 +70,40 @@ export default function Shell({ children }) {
 
   return (
     <>
-      <header className="topbar">
-        <div className="container topbar-inner">
-          <Link href="/" className="brand"><span className="brand-icon">{SITE_ICON}</span>{SITE_NAME}</Link>
-          <nav className="nav">
-            {LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href)) ? 'active' : ''}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="user">
-            <Link href="/settings" className="user-link small" title="Settings: theme and your name">⚙ {profile?.display_name ?? session.user.email}</Link>
+      <div className="mobile-bar">
+        <Link href="/" className="brand"><span className="brand-icon">{SITE_ICON}</span>{SITE_NAME}</Link>
+        <button className="menu-btn" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-controls="side-menu">
+          {menuOpen ? 'Close' : 'Menu'}
+        </button>
+      </div>
+      {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+      <aside id="side-menu" className={`sidebar${menuOpen ? ' open' : ''}`}>
+        <Link href="/" className="brand"><span className="brand-icon">{SITE_ICON}</span>{SITE_NAME}</Link>
+        <nav className="nav" aria-label="Main">
+          {GROUPS.map((g, i) => (
+            <div className="nav-group" key={g.label ?? i}>
+              {g.label && <span className="nav-group-label">{g.label}</span>}
+              {g.links.map((link) => (
+                <Link key={link.href} href={link.href} className={isActive(pathname, link.href) ? 'active' : ''} aria-current={isActive(pathname, link.href) ? 'page' : undefined}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="user">
+          <div className="user-row">
+            <Link href="/settings" className="user-link small" title="Settings: Battle.net, theme and your name">{profile?.display_name ?? session.user.email}</Link>
             <ThemeToggle />
-            <button className="btn ghost small" onClick={() => supabase.auth.signOut()}>Log out</button>
           </div>
+          <Link href="/settings" className={`small ${pathname === '/settings' ? '' : 'muted'}`}>Settings</Link>
+          <button className="btn ghost small" onClick={() => supabase.auth.signOut()}>Log out</button>
         </div>
-      </header>
+      </aside>
       <AutoSync userId={session.user.id} />
-      <main className="container">{children}</main>
+      <div className="app-main">
+        <main className="container">{children}</main>
+      </div>
     </>
   );
 }
