@@ -24,6 +24,8 @@ const TRASH = 'Trash & other drops';
 function gainLabel(u) {
   if (u.unknown) return '?';
   if (u.gain == null) return 'empty slot';
+  // Starter gear has almost no stats, so % gets silly (+7000%): just call it a big upgrade
+  if (u.gain >= 2) return 'big upgrade';
   return `+${Math.max(1, Math.round(u.gain * 100))}%`;
 }
 
