@@ -29,6 +29,7 @@ export default function EventPage() {
   const [choice, setChoice] = useState({ character_id: '', role: 'dps', status: 'going' });
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [editingSignup, setEditingSignup] = useState(false);
 
   const load = useCallback(async () => {
     const [ev, su, ch] = await Promise.all([
@@ -76,17 +77,18 @@ export default function EventPage() {
   const notGoing = signups.filter((s) => s.status === 'not_going');
   const isCreator = event.created_by === userId;
 
-  async function saveSignup(e) {
-    e.preventDefault();
+  async function saveSignup(e, status = choice.status) {
+    e?.preventDefault();
     setError('');
     const { error } = await supabase.from('event_signups').upsert({
       event_id: Number(id),
       user_id: userId,
       character_id: choice.character_id ? Number(choice.character_id) : null,
       role: choice.role,
-      status: choice.status,
+      status,
     });
     if (error) setError(error.message);
+    setEditingSignup(false);
     load();
   }
 
@@ -141,8 +143,60 @@ export default function EventPage() {
         {event.profiles?.display_name && ` · organised by ${event.profiles.display_name}`}
         {event.dungeons && <> · <Link href={`/dungeons/${event.dungeons.id}`}>{event.dungeons.name} loot</Link></>}
       </p>
-      {event.notes && <div className="panel" style={{ whiteSpace: 'pre-wrap' }}>{event.notes}</div>}
       {error && <p className="error">{error}</p>}
+
+      {/* ---------- Your answer (right at the top) ---------- */}
+      <section className={`panel signup-panel ${mySignup ? `answered-${mySignup.status}` : 'unanswered'}`}>
+        {mySignup && !editingSignup ? (
+          <div className="row spread">
+            <div>
+              <strong>
+                {mySignup.status === 'going' ? '✓ You’re going' : mySignup.status === 'maybe' ? '? You said maybe' : '✗ You can’t make it'}
+              </strong>
+              {mySignup.status !== 'not_going' && (
+                <span className="muted">
+                  {' '}{mySignup.characters?.name ? `on ${mySignup.characters.name}` : ''}{mySignup.role ? ` · ${ROLES[mySignup.role]?.label}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="row">
+              {mySignup.status !== 'going' && <button className="btn small" onClick={() => saveSignup(null, 'going')}>I&apos;m in</button>}
+              <button className="btn ghost small" onClick={() => setEditingSignup(true)}>Change</button>
+              <button className="btn ghost small" onClick={withdraw}>Remove</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ marginTop: 0 }}>{mySignup ? 'Change your answer' : 'Are you coming?'}</h2>
+            {myChars.length === 0 && (
+              <p className="muted small">Tip: <Link href="/roster">add a character</Link> so others can see your class and level.</p>
+            )}
+            <div className="form-grid" style={{ alignItems: 'end' }}>
+              <div>
+                <label htmlFor="char">Character</label>
+                <select id="char" value={choice.character_id} onChange={pickCharacter}>
+                  <option value="">— none —</option>
+                  {myChars.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.level} {c.class})</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="srole">Role</label>
+                <select id="srole" value={choice.role} onChange={(e) => setChoice({ ...choice, role: e.target.value })}>
+                  {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="row" style={{ marginTop: '0.9rem' }}>
+              <button className="btn" onClick={() => saveSignup(null, 'going')}>✓ I&apos;m in</button>
+              <button className="btn ghost" onClick={() => saveSignup(null, 'maybe')}>Maybe</button>
+              <button className="btn ghost" onClick={() => saveSignup(null, 'not_going')}>Can&apos;t make it</button>
+              {editingSignup && <button className="btn ghost" onClick={() => setEditingSignup(false)}>Cancel</button>}
+            </div>
+          </>
+        )}
+      </section>
+
+      {event.notes && <div className="panel" style={{ whiteSpace: 'pre-wrap' }}>{event.notes}</div>}
 
       <section className="panel">
         <h2>Group</h2>
@@ -218,37 +272,6 @@ export default function EventPage() {
         </section>
       )}
 
-      <section className="panel">
-        <h2>{mySignup ? 'Your sign-up' : 'Sign up'}</h2>
-        {myChars.length === 0 && (
-          <p className="muted small">Tip: <Link href="/roster">add a character</Link> so others can see your class and level.</p>
-        )}
-        <form onSubmit={saveSignup} className="form-grid" style={{ alignItems: 'end' }}>
-          <div>
-            <label htmlFor="char">Character</label>
-            <select id="char" value={choice.character_id} onChange={pickCharacter}>
-              <option value="">— none —</option>
-              {myChars.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.level} {c.class})</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="srole">Role</label>
-            <select id="srole" value={choice.role} onChange={(e) => setChoice({ ...choice, role: e.target.value })}>
-              {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="status">Status</label>
-            <select id="status" value={choice.status} onChange={(e) => setChoice({ ...choice, status: e.target.value })}>
-              {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </div>
-          <div className="row">
-            <button className="btn" type="submit">{mySignup ? 'Update' : 'Sign up'}</button>
-            {mySignup && <button type="button" className="btn ghost" onClick={withdraw}>Remove</button>}
-          </div>
-        </form>
-      </section>
     </>
   );
 }

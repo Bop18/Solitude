@@ -47,7 +47,11 @@ const ITEM_SLOT_FOR_GEAR = {
  * or throws an Error with a friendly message.
  */
 export function parseAddonExport(text) {
-  const clean = (text ?? '').trim().replace(/\s*\n\s*/g, '');
+  // Forgiving: ignore anything copied before "SOL1^" (e.g. a stray "/") and a "/solitude" typed after it
+  let clean = (text ?? '').trim().replace(/\s*\n\s*/g, '');
+  const at = clean.indexOf('SOL1^');
+  if (at > 0) clean = clean.slice(at);
+  clean = clean.replace(/\/?solitude\s*$/i, '');
   if (!clean.startsWith('SOL1^')) {
     throw new Error("That doesn't look like Solitude addon text. In game, type /solitude and copy everything in the box.");
   }

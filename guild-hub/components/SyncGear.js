@@ -30,7 +30,10 @@ export default function SyncGear({ character, onSynced }) {
         body: JSON.stringify({ characterId: character.id }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Sync failed (${res.status})`);
+      if (!res.ok) {
+        const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        throw new Error(`${body.error ?? `Sync failed (${res.status})`} (Checked ${at}${body.detail ? ` · ${body.detail.replace(/^WoW: Forever check: /, '')}` : ''})`);
+      }
       setMessage(summary(body, 'Battle.net'));
       onSynced?.();
     } catch (e) {
@@ -44,12 +47,15 @@ export default function SyncGear({ character, onSynced }) {
     setBusy(true); setError(''); setMessage('');
     try {
       const parsed = parseAddonExport(text);
-      if (parsed.name.toLowerCase() !== character.name.toLowerCase()
+      const first = (n) => n.trim().toLowerCase().split(/\s+/)[0]; // the game only shows the first name ("Lowkey" for "Lowkey Good")
+      if (first(parsed.name) !== first(character.name)
         && !confirm(`That text is for ${parsed.name}, but this page is ${character.name}. Import it anyway?`)) {
         setBusy(false);
         return;
       }
       const r = await applySync(supabase, character.id, { level: parsed.level, items: parsed.items, source: 'addon' });
+      // Remember the exact in-game realm so Battle.net Sync can find it (ignored if the column isn't there yet)
+      if (parsed.realm) await supabase.from('characters').update({ server_name: parsed.realm }).eq('id', character.id).then(() => {}, () => {});
       setMessage(summary({ ...r, level: parsed.level }, 'the addon'));
       setText('');
       setMode(null);

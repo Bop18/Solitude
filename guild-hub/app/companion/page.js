@@ -40,14 +40,14 @@ export default function CompanionPage() {
                 World of Warcraft → WoW: Forever, search <em>{CURSEFORGE_NAME}</em> and click <strong>Install</strong>.
                 CurseForge keeps it updated for you.
               </p>
-              {CURSEFORGE_URL ? (
-                <a className="btn small" href={CURSEFORGE_URL} target="_blank" rel="noreferrer">Open on CurseForge ↗</a>
-              ) : (
-                <p className="muted small">
-                  Not on CurseForge yet? <a href="/downloads/Solitude-addon.zip" download>Download it here</a> for now and unzip the{' '}
-                  <code>Solitude</code> folder into your WoW <code>Interface\AddOns</code> folder.
-                </p>
-              )}
+              <div className="row">
+                {CURSEFORGE_URL && <a className="btn small" href={CURSEFORGE_URL} target="_blank" rel="noreferrer">Open on CurseForge ↗</a>}
+                <a className="btn ghost small" href="/downloads/Solitude-addon.zip" download>Download the addon (zip)</a>
+              </div>
+              <p className="muted small">
+                No CurseForge app? Download the zip and unzip the <code>Solitude</code> folder into your WoW: Forever{' '}
+                <code>Interface\AddOns</code> folder (you should end up with <code>AddOns\Solitude\Solitude.toc</code>).
+              </p>
               <p className="muted small">If the game says it&apos;s out of date, tick <em>Load out of date AddOns</em> on the AddOns screen.</p>
             </li>
             <li>

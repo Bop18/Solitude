@@ -59,7 +59,7 @@ export default function NextSteps() {
       }
 
       const openNeeds = chars.flatMap((c) => c.wishlist ?? []).filter((w) => !w.obtained).length;
-      if (openNeeds) out.push({ icon: '★', text: <>{openNeeds} item{openNeeds === 1 ? '' : 's'} on your need list</>, href: '/loot', cta: 'See them' });
+      if (openNeeds) out.push({ icon: '★', text: <>{openNeeds} item{openNeeds === 1 ? '' : 's'} on your need list</>, href: '/dungeons', cta: 'See them' });
       else if (chars.length) out.push({ icon: '★', text: 'Your need list is empty. Browse a dungeon and press Need on what you want', href: '/dungeons', cta: 'Browse' });
 
       setSteps(out);

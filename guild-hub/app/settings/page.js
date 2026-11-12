@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { ACCENTS, getAppearance, setAppearance, syncMainAccent } from '@/lib/theme';
 import { classColor } from '@/lib/wow';
+import BattleNetLogin from '@/components/BattleNetLogin';
 
 export default function SettingsPage() {
   const { session, profile, refreshProfile } = useAuth();
@@ -26,9 +27,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('characters').select('name, class, is_main, level').eq('owner', userId)
+    supabase.from('characters').select('*').eq('owner', userId)
       .then(({ data }) => {
-        const m = (data ?? []).sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0] ?? null;
+        const m = (data ?? []).filter((c) => c.game !== 'retail').sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))[0] ?? null;
         setMain(m);
         if (m) syncMainAccent(m.class);
       });
@@ -85,6 +86,8 @@ export default function SettingsPage() {
         </div>
         {!main && <p className="muted small">Add a character and the site will use your main&apos;s class colour automatically.</p>}
       </section>
+
+      <BattleNetLogin />
 
       <section className="panel">
         <h2>Your name</h2>

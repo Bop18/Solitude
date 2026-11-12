@@ -22,7 +22,8 @@ export async function fetchAll(build, { pageSize = 1000, maxPages = 4 } = {}) {
 /** Each player's main: their is_main character, or their highest level one. */
 export function mainsByOwner(characters) {
   const out = {};
-  for (const c of [...characters].sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))) {
+  // Retail characters are only tracked for logs: never treat one as someone's main here
+  for (const c of [...characters].filter((x) => x.game !== 'retail').sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))) {
     if (!(c.owner in out)) out[c.owner] = c;
   }
   return out;
@@ -33,7 +34,7 @@ export function loadDungeons() {
   return cached('dungeons', async () => {
     const { data, error } = await supabase.from('dungeons').select('*').order('min_level', { nullsFirst: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).filter((d) => d.game !== 'retail'); // Classic tools only
   }, 600_000);
 }
 
@@ -42,7 +43,7 @@ export function loadCharactersWithGear() {
   return cached('chars:gear', async () => {
     const { data, error } = await supabase
       .from('characters')
-      .select('id, name, class, level, role, owner, is_main, synced_at, character_gear(slot, item_name, items(*))');
+      .select('*, character_gear(slot, item_name, items(*))');
     if (error) throw error;
     return data ?? [];
   }, 120_000);

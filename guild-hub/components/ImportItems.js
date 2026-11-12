@@ -75,8 +75,28 @@ export default function ImportItems({ onDone, compact = false }) {
       const { data: merged, error: mErr } = await supabase.rpc('merge_duplicate_items');
       if (mErr) throw mErr;
 
+      // WoW: Forever's new items: icons, quality and stats from Battle.net (skipped if it isn't set up)
+      let forever = 0;
+      try {
+        setMessage('Getting WoW: Forever item details from Battle.net…');
+        const { data: sess } = await supabase.auth.getSession();
+        let after = 0;
+        for (let n = 0; n < 20; n++) {
+          const r = await fetch('/api/forever-items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.session?.access_token ?? ''}` },
+            body: JSON.stringify({ after }),
+          });
+          const b = await r.json().catch(() => ({}));
+          if (!r.ok) break;
+          forever += b.filled ?? 0;
+          if (b.done || !b.after) break;
+          after = b.after;
+        }
+      } catch { /* optional */ }
+
       setProgress(100);
-      setMessage(`Done! Loaded ${rows.length.toLocaleString()} items${merged ? `, merged ${merged} hand-typed item${merged === 1 ? '' : 's'}` : ''}.`);
+      setMessage(`Done! Loaded ${rows.length.toLocaleString()} items${forever ? ` and ${forever} WoW: Forever item details` : ''}${merged ? `, merged ${merged} hand-typed item${merged === 1 ? '' : 's'}` : ''}.`);
       onDone?.();
     } catch (e) {
       setError(e.message ?? String(e));

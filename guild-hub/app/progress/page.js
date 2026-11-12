@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import RetailProgress from '@/components/RetailProgress';
+import ClassicCharacters from '@/components/ClassicCharacters';
 import Link from 'next/link';
 import useProgressData from '@/lib/useProgressData';
 import RaidProgress from '@/components/RaidProgress';
@@ -17,6 +19,31 @@ function untilText(date) {
 }
 
 export default function ProgressPage() {
+  const [game, setGame] = useState('classic');
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('game') === 'retail') setGame('retail');
+  }, []);
+  const pick = (g) => (e) => {
+    e.preventDefault();
+    setGame(g);
+    window.history.replaceState(null, '', g === 'retail' ? '?game=retail' : window.location.pathname);
+  };
+  return (
+    <>
+      <div className="row spread">
+        <h1>Progress</h1>
+        {game === 'classic' && <span className="muted small">Weekly reset in {untilText(nextReset())}</span>}
+      </div>
+      <nav className="tabs game-tabs">
+        <a href="#" className={game === 'classic' ? 'active' : ''} onClick={pick('classic')}>Classic</a>
+        <a href="#" className={game === 'retail' ? 'active' : ''} onClick={pick('retail')}>Retail</a>
+      </nav>
+      {game === 'retail' ? <RetailProgress /> : <ClassicProgress />}
+    </>
+  );
+}
+
+function ClassicProgress() {
   const { dungeons, kills, lockouts, characters, bossesByDungeon, error, loaded } = useProgressData();
   const [period, setPeriod] = useState('all'); // 'week' | 'all'
 
@@ -43,12 +70,12 @@ export default function ProgressPage() {
 
   return (
     <>
-      <div className="row spread">
-        <h1>Progress</h1>
-        <span className="muted small">Weekly reset in {untilText(nextReset())}</span>
-      </div>
       {error && <p className="error">{error}</p>}
 
+      {/* ---------- Characters (click one for their week) ---------- */}
+      {loaded && <ClassicCharacters dungeons={dungeons} kills={kills} lockouts={lockouts} characters={characters} bossesByDungeon={bossesByDungeon} />}
+
+      <h2 style={{ margin: '1.75rem 0 0.75rem' }}>The whole group</h2>
       {/* ---------- Numbers ---------- */}
       <div className="stat-tiles">
         <div className="stat-tile"><span className="stat-num">{started.reduce((s, r) => s + r.killed, 0)}</span><span className="stat-label">raid bosses this week</span></div>

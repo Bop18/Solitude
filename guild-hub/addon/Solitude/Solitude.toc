@@ -2,7 +2,7 @@
 ## Title: Solitude
 ## Notes: Tracks your boss kills, raid lockouts, level and gear for your group's Solitude website.
 ## Author: Solitude
-## Version: 2.0.1
+## Version: 2.0.2
 ## SavedVariables: SolitudeDB
 ## X-Category: Raid
 ## X-License: MIT

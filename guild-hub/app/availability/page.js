@@ -25,7 +25,7 @@ export default function AvailabilityPage() {
     const [{ data: hours, error: e1 }, { data: profiles, error: e2 }, { data: chars, error: e3 }] = await Promise.all([
       supabase.from('availability_hours').select('*'),
       supabase.from('profiles').select('id, display_name'),
-      supabase.from('characters').select('owner, role, is_main, level'),
+      supabase.from('characters').select('*'),
     ]);
     const err = e1 || e2 || e3;
     if (err) {
@@ -35,7 +35,7 @@ export default function AvailabilityPage() {
     }
     // Each player's role = their main character's role (or their highest level character's)
     const roleOf = {};
-    for (const c of [...chars].sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))) {
+    for (const c of [...chars].filter((x) => x.game !== 'retail').sort((a, b) => (b.is_main - a.is_main) || (b.level - a.level))) {
       if (!(c.owner in roleOf)) roleOf[c.owner] = c.role;
     }
     setMembers(Object.fromEntries(profiles.map((p) => [p.id, { name: p.display_name, role: roleOf[p.id] ?? null }])));

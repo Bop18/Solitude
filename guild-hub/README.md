@@ -56,6 +56,9 @@ It's a rule of thumb for "is this for me?", not a full simulator. WoW: Forever i
    13. `supabase/schema-13-logs.sql` (saved Warcraft Logs reports)
    14. `supabase/schema-14-log-characters.sql` (which of your characters each log belongs to)
    15. `supabase/schema-15-keep-logs.sql` (★ Keep: store a log's full breakdown for good)
+   16. `supabase/schema-16-game.sql` (each character's game: WoW: Forever, Classic or Retail)
+   17. `supabase/schema-17-log-source.sql` (All logs = pasted group logs; character searches stay under My logs)
+   18. `supabase/schema-18-retail-loot.sql` (retail dungeons & raids on the Loot page), then **Dungeons → Retail → Load this season's dungeons & raids**
 
    (Open each file, **Ctrl+A**, copy, and paste its *contents* into the editor. `fill-icons.sql` is a one-off fix for icons if items were loaded before icons existed.)
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email" (avoids the email rate limit; fine for a friends-only site).
@@ -119,6 +122,10 @@ Blizzard's official API. It works today for Classic Era characters. Whether it w
    - `BLIZZARD_CLIENT_ID` = your client ID
    - `BLIZZARD_CLIENT_SECRET` = your client secret
    - `BLIZZARD_REGION` = `eu` (or `us`)
+   - `NEXT_PUBLIC_BLIZZARD_CLIENT_ID` = your client ID again (for the "Log in with Battle.net" button; the ID isn't secret, the Secret is)
+   - On your Battle.net app (develop.battle.net → your client), add the Redirect URL `https://YOUR-SITE/bnet/callback`
+   - `SUPABASE_SERVICE_ROLE_KEY` = Supabase → Project Settings → API → `service_role` key (mark it **Sensitive**). Lets the site update everyone's characters automatically.
+   - `CRON_SECRET` = any long random text (Sensitive). Lets Vercel run the daily backup update.
    - `BLIZZARD_NAMESPACE`: **leave this out.** The site tries the likely WoW: Forever / Classic namespaces and remembers which one works. Only set it to force one (e.g. `profile-classic1x` for Classic Era).
 
    WoW: Forever has no realms, so on each character pick the **Ruleset** (Normal, PvP, RP, RP-PvP, Hardcore). The site works out which Blizzard server to use.

@@ -9,9 +9,11 @@ import ItemName from '@/components/ItemName';
 import WantControl from '@/components/WantControl';
 import RecordLoot from '@/components/RecordLoot';
 import ImportItems from '@/components/ImportItems';
+import ForeverItemDetails from '@/components/ForeverItemDetails';
 import BossTactics from '@/components/BossTactics';
 import DungeonGuide from '@/components/DungeonGuide';
 import RouteEditor from '@/components/RouteEditor';
+import BossLoot from '@/components/BossLoot';
 import { CLASS_NAMES, ITEM_SLOTS, QUALITY, PRIORITY, classColor } from '@/lib/wow';
 import { bestFor, upgradeFor, statSummary, spreadAcrossSlots, specsFor } from '@/lib/itemScore';
 import { specsOf, specsMatter } from '@/lib/specs';
@@ -22,6 +24,8 @@ const TRASH = 'Trash & other drops';
 function gainLabel(u) {
   if (u.unknown) return '?';
   if (u.gain == null) return 'empty slot';
+  // Starter gear has almost no stats, so % gets silly (+7000%): just call it a big upgrade
+  if (u.gain >= 2) return 'big upgrade';
   return `+${Math.max(1, Math.round(u.gain * 100))}%`;
 }
 
@@ -45,6 +49,8 @@ export default function DungeonPage() {
   const [loaded, setLoaded] = useState(false);
   const [hasGameData, setHasGameData] = useState(true);
   const [tab, setTab] = useState('loot'); // 'loot' | 'tactics' | 'routes'
+  const [lootView, setLootView] = useState(null); // 'needed' | 'all' (picked once loaded)
+  const [justMine, setJustMine] = useState(false);
 
   // Open a tab straight from a link, e.g. /dungeons/3#routes
   useEffect(() => {
@@ -62,7 +68,7 @@ export default function DungeonPage() {
       supabase.from('items').select('*').eq('dungeon_id', id).order('ilvl', { ascending: false, nullsFirst: false }),
       supabase
         .from('characters')
-        .select('id, name, class, level, owner, is_main, profiles(display_name), character_gear(slot, item_name, items(*))')
+        .select('*, profiles(display_name), character_gear(slot, item_name, items(*))')
         .order('level', { ascending: false }),
       supabase.from('items').select('id', { count: 'exact', head: true }).not('game_id', 'is', null),
     ]);
@@ -70,10 +76,13 @@ export default function DungeonPage() {
     if (err) setError(err.message);
     setDungeon(d.data);
     setItems(it.data ?? []);
-    setRoster(ch.data ?? []);
+    // Only characters from this dungeon's game (Classic dungeon → Classic characters, retail → retail)
+    const retailDungeon = d.data?.game === 'retail';
+    const sameGame = (ch.data ?? []).filter((c) => (c.game === 'retail') === retailDungeon);
+    setRoster(sameGame);
     setHasGameData((gd.count ?? 0) > 0);
 
-    const mine = (ch.data ?? []).filter((c) => c.owner === userId).sort((a, b) => b.is_main - a.is_main);
+    const mine = sameGame.filter((c) => c.owner === userId).sort((a, b) => b.is_main - a.is_main);
     setWantAs((cur) => cur || String(mine[0]?.id ?? ''));
 
     const ids = (it.data ?? []).map((i) => i.id);
@@ -85,7 +94,10 @@ export default function DungeonPage() {
       if (w.error || h.error) setError((w.error || h.error).message);
       setWishes(w.data ?? []);
       setHistory(h.data ?? []);
+      // Open on "Needed" when someone needs something here, otherwise on all loot
+      setLootView((v) => v ?? ((w.data ?? []).length ? 'needed' : 'all'));
     } else {
+      setLootView((v) => v ?? 'all');
       setWishes([]);
       setHistory([]);
     }
@@ -127,6 +139,8 @@ export default function DungeonPage() {
   if (!dungeon) return <p>Dungeon not found. <Link href="/dungeons">Back</Link></p>;
 
   const myChars = roster.filter((c) => c.owner === userId);
+  const isRetail = dungeon.game === 'retail';
+  const neededCount = new Set(wishes.map((w) => w.item_id)).size;
   const me = roster.find((c) => String(c.id) === wantAs);
   const wantersOf = (itemId) => wishes.filter((w) => w.item_id === itemId);
   const iHave = (item) =>
@@ -199,7 +213,7 @@ export default function DungeonPage() {
 
   return (
     <>
-      <p><Link href="/dungeons">← All dungeons</Link></p>
+      <p><Link href={isRetail ? '/dungeons?game=retail' : '/dungeons'}>← All {isRetail ? 'retail ' : ''}dungeons</Link></p>
       <h1>{dungeon.name}</h1>
       <p className="muted">
         {dungeon.kind === 'raid' ? 'Raid' : 'Dungeon'}
@@ -223,7 +237,39 @@ export default function DungeonPage() {
 
       {tab === 'loot' && (
         <>
+      {/* ---------- Needed / All loot ---------- */}
+      <div className="row spread loot-view-bar">
+        <nav className="tabs" style={{ margin: 0 }}>
+          <a href="#" className={lootView === 'needed' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setLootView('needed'); }}>
+            Needed{neededCount ? ` (${neededCount})` : ''}
+          </a>
+          <a href="#" className={lootView === 'all' ? 'active' : ''} onClick={(e) => { e.preventDefault(); setLootView('all'); }}>All loot</a>
+        </nav>
+        <div className="row">
+          {lootView === 'needed' && (
+            <label className="checkbox" style={{ margin: 0 }}><input type="checkbox" checked={justMine} onChange={(e) => setJustMine(e.target.checked)} /> Just mine</label>
+          )}
+          {myChars.length > 1 && (lootView === 'needed' || isRetail) && (
+            <>
+              <label htmlFor="wa2" style={{ margin: 0 }}>Needing as</label>
+              <select id="wa2" value={wantAs} onChange={(e) => setWantAs(e.target.value)} style={{ width: 'auto' }}>
+                {myChars.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </>
+          )}
+        </div>
+      </div>
+
+      {lootView === 'needed' ? (
+        <BossLoot items={items} wishes={wishes} roster={roster} wantAs={wantAs} userId={userId} justMine={justMine}
+          onChanged={load} onError={setError}
+          emptyText={justMine ? 'You don’t need anything from here.' : 'Nobody needs anything from here yet. Open “All loot” and press Need on what you want.'} />
+      ) : isRetail ? (
+        <BossLoot items={items} wishes={wishes} roster={roster} wantAs={wantAs} userId={userId} showAll
+          onChanged={load} onError={setError} emptyText="No loot listed for this one yet. Load it from Blizzard on the Dungeons page (Retail tab)." />
+      ) : (<>
       {!hasGameData && <ImportItems onDone={load} />}
+      <ForeverItemDetails dungeon={dungeon} items={items} onDone={load} />
 
       {/* ---------- For your group ---------- */}
       {hasGameData && (
@@ -444,6 +490,7 @@ export default function DungeonPage() {
           </form>
         )}
       </section>
+      </>)}
         </>
       )}
     </>

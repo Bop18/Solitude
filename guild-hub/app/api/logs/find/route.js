@@ -60,14 +60,22 @@ export async function POST(request) {
 
   let body = {};
   try { body = await request.json(); } catch { /* no body */ }
-  let q = supabase.from('characters').select('id, name, realm').eq('owner', userId);
-  if (body.characterId) q = q.eq('id', Number(body.characterId));
+  // One character (anyone's: opened from their character page), or all of mine
+  const q = body.characterId
+    ? supabase.from('characters').select('*').eq('id', Number(body.characterId))
+    : supabase.from('characters').select('*').eq('owner', userId); // '*': works before/after the "game" update
   const { data: chars } = await q;
   if (!chars?.length) return json({ reports: [], searched: [], note: 'Add your characters on the Roster first.' });
 
   const region = (process.env.WCL_REGION || process.env.BLIZZARD_REGION || 'EU').toUpperCase();
-  const sites = (process.env.WCL_SITES || 'classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com')
-    .split(',').map((s) => s.trim()).filter(Boolean);
+  // Which Warcraft Logs sites to look on, by the character's game
+  const foreverSites = (process.env.WCL_SITES || 'classic.warcraftlogs.com,fresh.warcraftlogs.com,www.warcraftlogs.com')
+    .split(',').map((x) => x.trim()).filter(Boolean);
+  const SITES = {
+    retail: ['www.warcraftlogs.com'],
+    classic: ['classic.warcraftlogs.com', 'fresh.warcraftlogs.com', 'sod.warcraftlogs.com'],
+    forever: foreverSites,
+  };
 
   const wcl = await wclToken();
   const found = new Map(); // code → report
@@ -101,6 +109,7 @@ export async function POST(request) {
     let hit = false;
     const problems = [];
     let server = realmsToTry[0];
+    const sites = SITES[c.game] ?? foreverSites;
     search:
     for (const realm of realmsToTry) for (const site of sites) {
       server = realm;
@@ -176,10 +185,11 @@ export async function POST(request) {
       started_at: r.start ? new Date(r.start).toISOString() : null,
       ended_at: r.end ? new Date(r.end).toISOString() : null,
       found_for: r.characterIds,
+      auto: true, // personal: shows under My logs, not All logs
     }));
     if (fresh.length) {
       const { error: insErr } = await supabase.from('logs').insert(fresh);
-      if (insErr) return json({ error: insErr.message }, 500);
+      if (insErr) return json({ error: insErr.message.includes('auto') ? 'Run supabase/schema-17-log-source.sql in Supabase first.' : insErr.message }, 500);
       added = fresh.length;
     }
     for (const r of reports.filter((x) => byCode[x.code])) {
